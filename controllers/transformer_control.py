@@ -59,10 +59,8 @@ class TransformerDisconnect(Controller):
         # Decide whether to disconnect the transformer based on the temperature
         if current_temperature > self.max_temperature and not self.trafo_disconnected:
             net.trafo.at[self.trafo_index, "in_service"] = False
-            # self.controller_converged = False  # Need to re-run the power flow
         else:
             net.trafo.at[self.trafo_index, "in_service"] = True
-            # self.controller_converged = True  # No action needed, controller has converged
 
         # Print transformer status
         status_str = "Disconnected" if not net.trafo.at[self.trafo_index, "in_service"] else "In Service"

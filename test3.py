@@ -1,16 +1,17 @@
 # Reset the network and controllers
 import random
-
 import pandas as pd
 from pandapower.control import ConstControl
 from pandapower.timeseries import run_timeseries, OutputWriter
 
+from controllers.FDIAttackController import FDIAttackController
 from controllers.rl_controller import RLController
 from controllers.transformer_control import TransformerDisconnect
 from envs.substation_env import SubstationEnv
 from utils.Generate_fdi import generate_fdi_list
 from utils.network import create_network, create_ds
 
+total_episodes = 100
 time_steps = 200
 
 net = create_network(time_steps)
@@ -63,7 +64,6 @@ for fdi in fdi_list:
     fdi_attack_log[(time_step, target_trafo_index)] = faulty_temperature
 
 # Print the FDI attack log to review all attacks before simulation
-print("FDI Attack Log (time_step, trafo_index): faulty_temperature")
 for (time_step, trafo_index), faulty_temperature in sorted(fdi_attack_log.items()):
     print(f"Time step {time_step}, Transformer {trafo_index}: Faulty temperature = {faulty_temperature}°C")
 
@@ -102,8 +102,17 @@ env.reset()
 # Initialize the RL controller (it will be automatically added to net.controller)
 rl_controller = RLController(env, net, trafo_indices=trafo_indices)
 
-# Run the time series simulation
-run_timeseries(net, time_steps=range(total_steps))
+for episode in range(total_episodes):
+    print(f"Episode: {episode+1}/{total_episodes}")
+    env.reset()
+    state = env._get_state()
+    # Run the time series simulation
+    run_timeseries(net, time_steps=range(total_steps))
+    if episode % rl_controller.update_target_every == 0:
+        rl_controller.target_net.load_state_dict(rl_controller.policy_net.state_dict())
+    rl_controller.log_episode_metrics(episode)
+    print(f"Finish Episode {episode+1}/{total_episodes}")
+
 
 # Specify which variables to record in the output (adding switch closed status)
 log_vars = [

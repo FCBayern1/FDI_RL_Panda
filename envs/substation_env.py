@@ -6,7 +6,7 @@ class SubstationEnv:
                  voltage_tolerance=0.05, voltage_penalty_factor=10.0,
                  line_loading_limit=100.0, power_flow_penalty_factor=5.0,
                  load_reward_factor=20.0, transformer_reward_factor=20.0,
-                 disconnection_penalty_factor=50.0, total_steps=200):
+                 disconnection_penalty_factor=50.0, total_steps=200, T_ambient=25.0, ΔT_rated=65.0, n=1.6):
         self.net = net
         self.trafo_indices = trafo_indices
         self.delta_p = delta_p  # Amount to adjust the disconnection probability
@@ -27,6 +27,9 @@ class SubstationEnv:
         self.disconnection_penalty_factor = disconnection_penalty_factor
 
         self.total_initial_load = self.net.load['p_mw'].sum()
+        self.T_ambient = T_ambient
+        self.ΔT_rated = ΔT_rated
+        self.n = n
 
         # Observation space and action space are defined in the RLController
 

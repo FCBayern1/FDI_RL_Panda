@@ -61,6 +61,8 @@ class SubstationEnv:
             individual_loads = self.net.load.p_mw.values  # Actual loads
             power_flow = self.net.res_line.loading_percent.values  # Line loadings
             transformer_loading = self.net.res_trafo.loading_percent.values  # Transformer loadings
+            measured_temp = self.net.trafo
+
 
             # Combine all observations into a single array
             state = np.concatenate([

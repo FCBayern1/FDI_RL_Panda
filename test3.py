@@ -4,7 +4,6 @@ import pandas as pd
 from pandapower.control import ConstControl
 from pandapower.timeseries import run_timeseries, OutputWriter
 
-from controllers.FDIAttackController import FDIAttackController
 from controllers.rl_controller import RLController
 from controllers.transformer_control import TransformerDisconnect
 from envs.substation_env import SubstationEnv
@@ -15,11 +14,13 @@ total_episodes = 100
 time_steps = 200
 
 net = create_network(time_steps)
-ds = create_ds(time_steps)
-
 # Define transformer indices
 trafo_indices = list(net.trafo.index)
 
+# initialise the transformer temperature
+net.trafo["temperature_measured"] = 20.0
+
+ds = create_ds(time_steps)
 
 print("Before removal:")
 print(net.controller)

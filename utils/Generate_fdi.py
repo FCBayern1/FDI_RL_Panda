@@ -20,4 +20,3 @@ num_attacks = 10
 
 # Generate the FDI list with adjusted faulty temperature values
 fdi_list = generate_fdi_list(total_steps, num_attacks)
-print(fdi_list)

@@ -1,3 +1,4 @@
+import numpy as np
 from pandapower.control.basic_controller import Controller
 
 
@@ -31,33 +32,36 @@ class TransformerDisconnect(Controller):
 
         # Get actual loading percent of the transformer before any FDI injection
         try:
-            actual_loading_percent = net.res_trafo.at[self.trafo_index, 'loading_percent']
+            actual_loading_percent = np.nan_to_num(net.res_trafo.at[self.trafo_index, 'loading_percent'],0.0)
         except KeyError:
             print(f"Time step {time_step}: KeyError - No data available for transformer at index {self.trafo_index}")
             self.controller_converged = True
             return
 
         actual_temperature = self.calculate_temperature(actual_loading_percent)
+        self.net.trafo.at[self.trafo_index, 'temperature_measured'] = actual_temperature
         print(
             f"Time step {time_step}: The actual temperature of transformer {self.trafo_index} is {actual_temperature:.2f}°C")
 
         # Check if an FDI attack should be applied at this specific time step for this transformer
-        current_temperature = None
+        current_temperature = actual_temperature
         for f_step, faulty_temperature in self.fdi_list:
             if f_step == time_step:
+                self.net.trafo.at[self.trafo_index, 'temperature_measured'] = faulty_temperature
+                self.net.trafo.at[self.trafo_index, 'fdi'] = True
                 current_temperature = faulty_temperature
                 print(
-                    f"Time step {time_step}: FDI Injected, setting trafo {self.trafo_index} temperature to {current_temperature}°C")
+                    f"Time step {time_step}: FDI Injected, setting trafo {self.trafo_index} temperature to {faulty_temperature}°C")
                 break
 
         # If no FDI attack is specified for this time step, use the actual temperature data
-        if current_temperature is None:
-            current_temperature = actual_temperature
+        if self.net.trafo.at[self.trafo_index, 'temperature_measured'] is None:
+            self.net.trafo.at[self.trafo_index, 'temperature_measured'] = actual_temperature
 
         print(f"Time step {time_step}: Transformer {self.trafo_index} current reading: {current_temperature:.2f}°C")
 
         # Decide whether to disconnect the transformer based on the temperature
-        if current_temperature > self.max_temperature and not self.trafo_disconnected:
+        if self.net.trafo.at[self.trafo_index, 'temperature_measured'] > self.max_temperature and not self.trafo_disconnected:
             net.trafo.at[self.trafo_index, "in_service"] = False
         else:
             net.trafo.at[self.trafo_index, "in_service"] = True

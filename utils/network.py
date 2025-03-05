@@ -29,14 +29,14 @@ def create_ds(time_steps=200):
     return ds
 
 
-def create_load_profile(time_steps=200, base_load=50, load_amplitude=30):
+def create_load_profile(time_steps=200, base_load=60, load_amplitude=30):
     hours = np.linspace(0, 24, time_steps)  # Scale time steps to a 24-hour representation
 
     # Base sinusoidal load variation (mimicking daily demand cycles)
     daily_variation = load_amplitude * np.sin(2 * np.pi * (hours - 6) / 24)  # Peak at noon, low at night
 
     # Introduce random overload spikes
-    overload_spikes = np.random.choice([0, 10, 20, 30], size=time_steps, p=[0.7, 0.2, 0.08, 0.02])
+    overload_spikes = np.random.choice([0, 5, 10, 15], size=time_steps, p=[0.7, 0.2, 0.08, 0.02])
     # 70% normal, 20% small spikes, 8% moderate overloads, 2% extreme overloads
 
     # Final load profile: Base load + daily variations + occasional overloads

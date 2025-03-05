@@ -3,14 +3,14 @@ from pandapower.control.basic_controller import Controller
 
 
 class TransformerDisconnect(Controller):
-    def __init__(self, net, trafo_index, max_temperature, T_ambient=25.0, ΔT_rated=65.0, n=1.6, fdi_list=None,
+    def __init__(self, net, trafo_index, max_temperature, T_ambient=25.0, T_rated=65.0, n=1.6, fdi_list=None,
                  total_steps=200, in_service=True, order=0, level=0, **kwargs):
         super().__init__(net, in_service=in_service, order=order, level=level, **kwargs)
         self.net = net
         self.trafo_index = trafo_index
         self.max_temperature = max_temperature
         self.T_ambient = T_ambient
-        self.ΔT_rated = ΔT_rated
+        self.T_rated = T_rated
         self.n = n
         self.fdi_list = fdi_list if fdi_list is not None else []
         self.total_steps = total_steps
@@ -20,7 +20,7 @@ class TransformerDisconnect(Controller):
 
     def calculate_temperature(self, loading_percent):
         # Calculate the transformer temperature based on loading percent
-        return self.T_ambient + self.ΔT_rated * (loading_percent / 100) ** self.n
+        return self.T_ambient + self.T_rated * (loading_percent) ** self.n
 
     def control_step(self, net):
         if self.controller_converged:
@@ -40,8 +40,7 @@ class TransformerDisconnect(Controller):
 
         actual_temperature = self.calculate_temperature(actual_loading_percent)
         self.net.trafo.at[self.trafo_index, 'temperature_measured'] = actual_temperature
-        print(
-            f"Time step {time_step}: The actual temperature of transformer {self.trafo_index} is {actual_temperature:.2f}°C")
+        print(f"\n Time step {time_step}: The actual temperature of transformer {self.trafo_index} is {actual_temperature:.2f}°C, actual loading percent is {actual_loading_percent:.2f}")
 
         # Check if an FDI attack should be applied at this specific time step for this transformer
         current_temperature = actual_temperature
@@ -51,7 +50,7 @@ class TransformerDisconnect(Controller):
                 self.net.trafo.at[self.trafo_index, 'fdi'] = True
                 current_temperature = faulty_temperature
                 print(
-                    f"Time step {time_step}: FDI Injected, setting trafo {self.trafo_index} temperature to {faulty_temperature}°C")
+                    f"🌹🌹Time step {time_step}: FDI Injected, setting trafo {self.trafo_index} temperature to {faulty_temperature}°C")
                 break
 
         # If no FDI attack is specified for this time step, use the actual temperature data
@@ -65,10 +64,6 @@ class TransformerDisconnect(Controller):
             net.trafo.at[self.trafo_index, "in_service"] = False
         else:
             net.trafo.at[self.trafo_index, "in_service"] = True
-
-        # Print transformer status
-        status_str = "Disconnected" if not net.trafo.at[self.trafo_index, "in_service"] else "In Service"
-        print(f"Time step {time_step}: Transformer {self.trafo_index} status: {status_str}\n")
         self.controller_converged = True
 
     def time_step(self, net, time):

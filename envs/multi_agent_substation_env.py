@@ -24,7 +24,7 @@ class multi_agent_substation_env:
         self.total_steps = total_steps
         self.step_count = 0
         self.T_ambient = 25.0
-        self.ΔT_rated = 65.0
+        self.T_rated = 65.0
         self.n = 1.6
 
 
@@ -46,34 +46,38 @@ class multi_agent_substation_env:
         try:
             bus_voltages = self.net.res_bus.vm_pu.values
             power_flows = self.net.res_line.loading_percent.values
-            real_transformer_loading = np.nan_to_num(self.net.res_trafo.loading_percent.values, nan = 0.0)
-            expected_temperature = self.T_ambient + self.ΔT_rated * (real_transformer_loading[trafo_index] / 100) ** self.n
-            self.temperature_history[trafo_index] = np.roll(self.temperature_history[trafo_index], shift = -1)
-            self.temperature_history[trafo_index][-1] = expected_temperature
+            real_transformer_loading = np.nan_to_num(self.net.res_trafo.loading_percent.values, nan=0.0)
+            actual_temperature = self.T_ambient + self.T_rated * (real_transformer_loading[trafo_index]) ** self.n
+            self.temperature_history[trafo_index] = np.roll(self.temperature_history[trafo_index], shift=-1)
+            self.temperature_history[trafo_index][-1] = actual_temperature
             temperature_trend = np.mean(self.temperature_history[trafo_index])
 
             local_state = np.concatenate([
-                bus_voltages,
-                power_flows,
+                bus_voltages,  # num_buses
+                power_flows,  # num_lines
                 [real_transformer_loading[trafo_index]],
-                [expected_temperature],
+                [actual_temperature],
                 [temperature_trend],
                 [self.p[trafo_index]]
             ])
+
+            assert len(
+                local_state) == self.get_state_size(), f"State size mismatch: expected {self.get_state_size()}, got {len(local_state)}"
             return local_state
 
         except Exception as e:
-            print(f"Error in getting state for Transformer {trafo_index}:{e}")
-            return np.zeros(6)
+            print(f"Error in getting state for Transformer {trafo_index}: {e}")
+            return np.zeros(self.get_state_size())
 
-    def get_local_reward(self, trafo_index, state):
+    def get_local_reward(self, state):
         num_buses = len(self.net.res_bus.vm_pu)
         num_lines = len(self.net.res_line.loading_percent)
         bus_voltages = state[:num_buses]
         power_flows = state[num_buses:num_buses + num_lines]
         real_loading = state[-4]  # Transformer loading
-        expected_temperature = state[-3]  # Expected temperature
+        actual_temperature = state[-3]  # Actual temperature
         temperature_trend = state[-2]  # Temperature trend
+
 
         voltage_deviation = np.sum(np.maximum(np.abs(bus_voltages - 1.0) - self.voltage_tolerance, 0))
         voltage_penalty = -voltage_deviation * self.voltage_penalty_factor
@@ -81,15 +85,17 @@ class multi_agent_substation_env:
         overloaded_lines = np.sum(power_flows > self.line_loading_limit)
         line_loading_penalty = -overloaded_lines * self.power_flow_penalty_factor
 
-        temperature_residual = np.abs(expected_temperature - temperature_trend)
+        temperature_residual = np.abs(actual_temperature - temperature_trend)
         temp_penalty = -50 if temperature_residual > 5 else 10
 
-        if real_loading > 100:
-            load_penalty = - (real_loading - 100) * self.transformer_reward_factor
+        if real_loading > 1:
+            load_penalty = - (real_loading - 1) * self.transformer_reward_factor
         else:
-            load_penalty = (100 - real_loading) * self.transformer_reward_factor
+            load_penalty = (1 - real_loading) * self.transformer_reward_factor
 
-        reward = voltage_penalty + line_loading_penalty + temp_penalty + load_penalty
+        overtemp_penalty = 50 if actual_temperature >100 else -10
+
+        reward = voltage_penalty + line_loading_penalty + temp_penalty + load_penalty + overtemp_penalty
 
         return reward
 

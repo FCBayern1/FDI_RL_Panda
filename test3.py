@@ -75,7 +75,7 @@ for i, index in enumerate(trafo_indices):
         trafo_index=index,
         max_temperature=max_temperature,      # Set the maximum allowable temperature
         T_ambient=T_ambient,                  # Ambient temperature
-        ΔT_rated=ΔT_rated,                    # Rated temperature rise
+        δt_rated=ΔT_rated,                    # Rated temperature rise
         n=n,                                  # Exponent for temperature calculation
         fdi_list=fdi_per_trafo[i],            # Apply specific FDI list for each transformer
         total_steps=total_steps

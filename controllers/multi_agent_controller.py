@@ -52,7 +52,8 @@ class multi_agent_controller(Controller):
 
             net.trafo.at[trafo_index, "in_service"] = np.random.rand() > self.env.p[trafo_index]
             status_str = "Disconnected" if not net.trafo.at[trafo_index, "in_service"] else "In Service"
-            print(f"Time step {self.env.step_count}, RL agent set the trafo {trafo_index} {status_str}")
+            print(f"Time step {self.env.step_count}, RL agent set the trafo {trafo_index} {status_str}, with disconnection p {self.env.p[trafo_index]}")
+
 
         try:
             pp.runpp(net)
@@ -70,7 +71,7 @@ class multi_agent_controller(Controller):
 
             next_state = next_state_dict[trafo_index]
 
-            reward = self.env.get_local_reward(trafo_index, next_state)
+            reward = self.env.get_local_reward(next_state)
 
             done = self.env.step_count >= self.env.total_steps
 

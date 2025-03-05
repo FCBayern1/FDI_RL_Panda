@@ -1,16 +1,19 @@
 import random
 import pandas as pd
 from pandapower.control import ConstControl
+import pandapower as pp
 from pandapower.timeseries import run_timeseries, OutputWriter
 from controllers.multi_agent_controller import multi_agent_controller
 from envs.multi_agent_substation_env import multi_agent_substation_env
 from controllers.transformer_control import TransformerDisconnect
+from plots.plot_utils import plot_curves
+from utils import network
 from utils.Generate_fdi import generate_fdi_list
 from utils.network import create_network, create_ds
 import torch
 
-total_episodes = 1
-time_steps = 200
+total_episodes = 10
+time_steps = 100
 
 #Create the network
 net = create_network()
@@ -19,25 +22,34 @@ net = create_network()
 trafo_indices = list(net.trafo.index)
 
 # initialise the transformer temperature
-net.trafo["temperature_measured"] = 20.0
+for i in trafo_indices:
+    net.trafo.at[i,"temperature_measured"] = 20.0
 
-ds = create_ds(time_steps)
+print(net.trafo.columns)
+
+load_profile_df = network.create_load_profile(time_steps, base_load=5, load_amplitude=10)
+ds = pp.timeseries.DFData(load_profile_df)
+
+for load_idx in net.load.index:
+    ConstControl(net, element="load", variable="p_mw", element_index=[load_idx], data_source=ds, profile_name="p_mw")
+
+
 
 T_ambient = 25.0
-ΔT_rated = 65.0
+T_rated = 65.0
 n = 1.6
-max_temperature = 104.0
+max_temperature = 100.0
 
-# Re-attach the generator control
-control = ConstControl(net, element='gen', variable='p_mw', element_index=[0], data_source=ds, profile_name='p_mw')
+# # Re-attach the generator control
+# ds = create_ds(time_steps)
+# control = ConstControl(net, element='gen', variable='p_mw', element_index=[0], data_source=ds, profile_name='p_mw')
 
 # Generate FDI lists for each transformer
-total_steps = 200
-num_attacks = 10
+num_attacks = 20
 min_faulty_data = 105.0
 max_faulty_data = 110.0
 
-fdi_list = generate_fdi_list(total_steps, num_attacks, min_faulty_data, max_faulty_data)
+fdi_list = generate_fdi_list(time_steps, num_attacks, min_faulty_data, max_faulty_data)
 
 fdi_per_trafo = [[] for _ in trafo_indices]
 fdi_attack_log = {}  # Log to track FDI attacks for later analysis
@@ -61,10 +73,10 @@ for i, index in enumerate(trafo_indices):
         trafo_index=index,
         max_temperature=max_temperature,      # Set the maximum allowable temperature
         T_ambient=T_ambient,                  # Ambient temperature
-        ΔT_rated=ΔT_rated,                    # Rated temperature rise
+        T_rated=T_rated,                    # Rated temperature rise
         n=n,                                  # Exponent for temperature calculation
         fdi_list=fdi_per_trafo[i],            # Apply specific FDI list for each transformer
-        total_steps=total_steps
+        total_steps=time_steps
     )
 
 env = multi_agent_substation_env(net,
@@ -78,18 +90,30 @@ env = multi_agent_substation_env(net,
                 load_reward_factor=20.0,
                 transformer_reward_factor=20.0,
                 disconnection_penalty_factor=50.0,
-                total_steps=200)
+                total_steps=time_steps)
 
 env.reset()
 
 RLController = multi_agent_controller(env, net, trafo_indices=trafo_indices)
+
+log_vars = [
+    ("trafo", "in_service"),  # Record transformer status
+    ("res_trafo", "loading_percent"),
+    ("trafo", "temperature_measured")
+]
+
+ow = OutputWriter(
+    net, time_steps=time_steps, output_path="./output_data",
+    output_file_type='.csv', log_variables=log_vars, csv_separator=';'
+)
+
 
 for episode in range(total_episodes):
     print(f"Episode: {episode+1}/{total_episodes}")
     env.reset()
     print("Controllers in the network:")
     print(net.controller)
-    run_timeseries(net, time_steps = range(total_steps))
+    run_timeseries(net, time_steps = range(time_steps))
     if episode % RLController.update_target_every == 0:
         for idx in trafo_indices:
             RLController.agents[idx]["target_net"].load_state_dict(RLController.agents[idx]["policy_net"].state_dict())
@@ -98,32 +122,17 @@ for episode in range(total_episodes):
 for idx in trafo_indices:
     torch.save(RLController.agents[idx]["policy_net"].state_dict(), f"trafo_{idx}_dqn_model.pth")
 
-log_vars = [
-    ("trafo", "in_service"),  # Record transformer status
-    ("switch", "closed")      # Record switch closed status
-]
-
-ow = OutputWriter(
-    net, time_steps=time_steps, output_path="./output_data",  # Use exp3 folder
-    output_file_type='.csv', log_variables=log_vars, csv_separator=';'
-)
 
 try:
-    transformer_status_log = pd.read_csv('output_data/trafo/in_service.csv', sep=';')
-    switch_status_log = pd.read_csv('output_data/switch/closed.csv', sep=';')
+    transformer_status_log = pd.read_csv('./output_data/trafo/in_service.csv', sep=';')
+    transformer_loading = pd.read_csv('./output_data/res_trafo/loading_percent.csv', sep=';')
     # Clean up the data
     transformer_status_log.drop(columns=['Unnamed: 0'], inplace=True)
-    switch_status_log.drop(columns=['Unnamed: 0'], inplace=True)
-
-    # Display the first 10 rows of the transformer and switch status
-    print("Transformer In-Service Status:")
-    print(transformer_status_log.head(10))
-
-    print("\nSwitch Closed Status:")
-    print(switch_status_log.head(10))
 
 except FileNotFoundError as e:
     print("File not found. Please ensure the OutputWriter has logged the correct data.")
+
+plot_curves("./output_data/res_trafo/loading_percent.csv")
 
 
 

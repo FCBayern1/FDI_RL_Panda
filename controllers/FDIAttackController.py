@@ -22,9 +22,9 @@ class FDIAttackController(Controller):
             return
 
         time_step = self.current_time_step
+
         if time_step is None:
             return
-
         try:
             actual_loading_percent = net.res_trafo.at[self.trafo_index, 'loading_percent']
         except KeyError:

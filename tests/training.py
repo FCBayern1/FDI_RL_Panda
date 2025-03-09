@@ -7,9 +7,8 @@ from controllers.multi_agent_controller import multi_agent_controller
 from envs.multi_agent_substation_env import multi_agent_substation_env
 from controllers.transformer_control import TransformerDisconnect
 from plots.plot_utils import plot_curves
-from utils import network
 from utils.Generate_fdi import generate_fdi_list
-from utils.network import create_network, create_ds
+from utils.network import create_network, create_load_profile, create_stable_gen_profile
 import torch
 
 total_episodes = 10
@@ -27,13 +26,20 @@ for i in trafo_indices:
 
 print(net.trafo.columns)
 
-load_profile_df = network.create_load_profile(time_steps, base_load=5, load_amplitude=10)
+overload_steps = [20, 50, 80]
+
+
+load_profile_df = create_load_profile(time_steps, base_load=2, load_amplitude=4, overload_steps=overload_steps, overload_factor=3.0)
 ds = pp.timeseries.DFData(load_profile_df)
 
 for load_idx in net.load.index:
     ConstControl(net, element="load", variable="p_mw", element_index=[load_idx], data_source=ds, profile_name="p_mw")
 
-
+# load_profiles, overload_steps = create_dynamic_load_profiles(net, time_steps=time_steps, overload_prob=0.1, overload_factor=5.0)
+#
+# # 绑定负载控制器
+# for load_idx, ds in load_profiles.items():
+#     ConstControl(net, element="load", variable="p_mw", element_index=[load_idx], data_source=ds, profile_name="p_mw")
 
 T_ambient = 25.0
 T_rated = 65.0
@@ -41,8 +47,9 @@ n = 1.6
 max_temperature = 100.0
 
 # # Re-attach the generator control
-# ds = create_ds(time_steps)
-# control = ConstControl(net, element='gen', variable='p_mw', element_index=[0], data_source=ds, profile_name='p_mw')
+gen_profile = create_stable_gen_profile(net, time_steps=time_steps, base_gen_factor=2.0)
+gen_ds = pp.timeseries.DFData(gen_profile)
+control = ConstControl(net, element='gen', variable='p_mw', element_index=[0], data_source=gen_profile, profile_name='p_mw')
 
 # Generate FDI lists for each transformer
 num_attacks = 20

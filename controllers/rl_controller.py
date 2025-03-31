@@ -117,7 +117,7 @@ class RLController(Controller):
             best_action_indices = self.policy_net(next_states).argmax(1, keepdim=True)
             next_q_values = self.target_net(next_states).gather(1, best_action_indices)
             target_q_values = rewards + self.gamma * next_q_values * (~dones)
-            target_q_values = torch.clamp(target_q_values, -10, 10)  # 限制目标 Q 值范围
+            target_q_values = torch.clamp(target_q_values, -10, 10)
 
         q_values = self.policy_net(states).gather(1, actions)
         loss = nn.MSELoss()(q_values, target_q_values)

@@ -6,7 +6,7 @@ from pandapower.timeseries import run_timeseries, OutputWriter
 from controllers.multi_agent_controller import multi_agent_controller
 from envs.multi_agent_substation_env import multi_agent_substation_env
 from controllers.transformer_control import TransformerDisconnect
-from plots.plot_utils import plot_curves
+from plots.plot_utils import plot_curves, plot_loss
 from utils.Generate_fdi import generate_fdi_list
 from utils.network import create_network, create_load_profile, create_stable_gen_profile
 import torch
@@ -26,20 +26,12 @@ for i in trafo_indices:
 
 print(net.trafo.columns)
 
-overload_steps = [20, 50, 80]
-
-
-load_profile_df = create_load_profile(time_steps, base_load=2, load_amplitude=4, overload_steps=overload_steps, overload_factor=3.0)
+# Create the dynamic load for the transformer
+load_profile_df = create_load_profile(time_steps, base_load=1, load_amplitude=3, overload_factor=3.0)
 ds = pp.timeseries.DFData(load_profile_df)
 
 for load_idx in net.load.index:
     ConstControl(net, element="load", variable="p_mw", element_index=[load_idx], data_source=ds, profile_name="p_mw")
-
-# load_profiles, overload_steps = create_dynamic_load_profiles(net, time_steps=time_steps, overload_prob=0.1, overload_factor=5.0)
-#
-# # 绑定负载控制器
-# for load_idx, ds in load_profiles.items():
-#     ConstControl(net, element="load", variable="p_mw", element_index=[load_idx], data_source=ds, profile_name="p_mw")
 
 T_ambient = 25.0
 T_rated = 65.0
@@ -106,7 +98,8 @@ RLController = multi_agent_controller(env, net, trafo_indices=trafo_indices)
 log_vars = [
     ("trafo", "in_service"),  # Record transformer status
     ("res_trafo", "loading_percent"),
-    ("trafo", "temperature_measured")
+    ("trafo", "temperature_measured"),
+    ("trafo", "actual_temperature")
 ]
 
 ow = OutputWriter(
@@ -114,6 +107,10 @@ ow = OutputWriter(
     output_file_type='.csv', log_variables=log_vars, csv_separator=';'
 )
 
+# for episode in range(total_episodes):
+#     print(f"Episode: {episode + 1}/{total_episodes}")
+#     run_timeseries(net, time_steps=range(time_steps))
+#     print(f"Finished Episode {episode + 1}/{total_episodes}")
 
 for episode in range(total_episodes):
     print(f"Episode: {episode+1}/{total_episodes}")
@@ -127,19 +124,21 @@ for episode in range(total_episodes):
     print(f"Finished Episode {episode+1}/{total_episodes}")
 
 for idx in trafo_indices:
-    torch.save(RLController.agents[idx]["policy_net"].state_dict(), f"trafo_{idx}_dqn_model.pth")
+    torch.save(RLController.agents[idx]["policy_net"].state_dict(), f"trafo_{idx}_dqn_model_1.pth")
 
 
 try:
-    transformer_status_log = pd.read_csv('./output_data/trafo/in_service.csv', sep=';')
-    transformer_loading = pd.read_csv('./output_data/res_trafo/loading_percent.csv', sep=';')
+    transformer_status_log = pd.read_csv('./output_data/trafo/in_service_1.csv', sep=';')
+    transformer_loading = pd.read_csv('./output_data/res_trafo/loading_percent_1.csv', sep=';')
     # Clean up the data
     transformer_status_log.drop(columns=['Unnamed: 0'], inplace=True)
 
 except FileNotFoundError as e:
     print("File not found. Please ensure the OutputWriter has logged the correct data.")
 
-plot_curves("./output_data/res_trafo/loading_percent.csv")
+
+# RLController.plot_loss_curves()
+
 
 
 

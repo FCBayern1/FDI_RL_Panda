@@ -2,12 +2,13 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
+import matplotlib.pyplot as plt
 from pandapower.control.basic_controller import Controller
 from models.dqn_agent import DQNAgent
 import pandapower as pp
 
-class multi_agent_controller(Controller):
 
+class multi_agent_controller(Controller):
     def __init__(self, env, net, trafo_indices, **kwargs):
         super().__init__(net, **kwargs)
         self.env = env
@@ -16,9 +17,11 @@ class multi_agent_controller(Controller):
         self.agents = {}
         self.applied = False
 
+        self.loss_history = {idx: [] for idx in self.trafo_indices}
+
         for trafo_index in self.trafo_indices:
             self.agents[trafo_index] = {
-                "policy_net": DQNAgent(self.env.get_state_size(), 2),  # Each agent has 2 actions (disconnect/stay)
+                "policy_net": DQNAgent(self.env.get_state_size(), 2),
                 "target_net": DQNAgent(self.env.get_state_size(), 2),
                 "memory": [],
                 "memory_capacity": 10000,
@@ -30,19 +33,19 @@ class multi_agent_controller(Controller):
             self.agents[trafo_index]["target_net"].load_state_dict(self.agents[trafo_index]["policy_net"].state_dict())
             self.agents[trafo_index]["target_net"].eval()
             self.agents[trafo_index]["optimizer"] = optim.Adam(self.agents[trafo_index]["policy_net"].parameters(),
-                                                           lr=0.001)
+                                                               lr=0.001)
+
         self.update_target_every = 10
 
     def control_step(self, net):
         state_dict = {idx: self.normalize_state(self.env.get_local_state(idx)) for idx in self.trafo_indices}
         action_dict = {}
+
         for trafo_index in self.trafo_indices:
             agent = self.agents[trafo_index]
-
             state = state_dict[trafo_index]
 
             action = self.select_action(agent, state)
-
             action_dict[trafo_index] = action
 
             if action == 1:
@@ -52,8 +55,8 @@ class multi_agent_controller(Controller):
 
             net.trafo.at[trafo_index, "in_service"] = np.random.rand() > self.env.p[trafo_index]
             status_str = "Disconnected" if not net.trafo.at[trafo_index, "in_service"] else "In Service"
-            print(f"Time step {self.env.step_count}, RL agent set the trafo {trafo_index} {status_str}, with disconnection p {self.env.p[trafo_index]}")
-
+            print(
+                f"Time step {self.env.step_count}, RL agent set the trafo {trafo_index} {status_str}, with disconnection p {self.env.p[trafo_index]}")
 
         try:
             pp.runpp(net)
@@ -64,15 +67,11 @@ class multi_agent_controller(Controller):
 
         for trafo_index in self.trafo_indices:
             state = state_dict[trafo_index]
-
             action = action_dict[trafo_index]
-
             agent = self.agents[trafo_index]
-
             next_state = next_state_dict[trafo_index]
 
             reward = self.env.get_local_reward(next_state)
-
             done = self.env.step_count >= self.env.total_steps
 
             agent['memory'].append((state, action, reward, next_state, done))
@@ -81,7 +80,7 @@ class multi_agent_controller(Controller):
                 agent["memory"].pop(0)
 
             if len(agent["memory"]) >= agent["batch_size"]:
-                self.learn(agent)
+                self.learn(agent, trafo_index)  # 训练
 
             agent['step_counter'] += 1
 
@@ -90,7 +89,7 @@ class multi_agent_controller(Controller):
 
     def normalize_state(self, state):
         if state is None or len(state) == 0:
-            return np.zeros(self.env.get_state_size(0))
+            return np.zeros(self.env.get_state_size())
         state_min, state_max = np.min(state), np.max(state)
         return np.nan_to_num((state - state_min) / (state_max - state_min) if state_max - state_min > 0 else state)
 
@@ -102,7 +101,7 @@ class multi_agent_controller(Controller):
             q_values = agent["policy_net"](state_tensor)
         return int(torch.argmax(q_values).item())
 
-    def learn(self, agent):
+    def learn(self, agent, trafo_index):
         batch = np.random.choice(len(agent["memory"]), agent["batch_size"], replace=False)
         experiences = [agent["memory"][i] for i in batch]
 
@@ -125,9 +124,22 @@ class multi_agent_controller(Controller):
         torch.nn.utils.clip_grad_norm_(agent["policy_net"].parameters(), max_norm=1.0)
         agent["optimizer"].step()
 
+        # 记录每个 transformer 的损失
+        self.loss_history[trafo_index].append(loss.item())
+
     def is_converged(self, net):
         return self.applied
 
     def time_step(self, net, time):
         self.applied = False
 
+    def plot_loss_curves(self):
+        """ 绘制每个 transformer 的损失曲线 """
+        plt.figure(figsize=(8, 5))
+        for trafo_index, loss_list in self.loss_history.items():
+            plt.plot(loss_list, label=f"Transformer {trafo_index}")
+        plt.xlabel("Training Steps")
+        plt.ylabel("Loss")
+        plt.title("DQN Loss for Each Transformer")
+        plt.legend()
+        plt.show()

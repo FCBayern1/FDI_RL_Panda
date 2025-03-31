@@ -17,6 +17,10 @@ class TransformerDisconnect(Controller):
         self.current_time_step = None
         self.trafo_disconnected = False
         self.controller_converged = False
+        self.tp = 0
+        self.fp = 0
+        self.tn = 0
+        self.fn = 0
 
     def calculate_temperature(self, loading_percent):
         # Calculate the transformer temperature based on loading percent
@@ -40,6 +44,7 @@ class TransformerDisconnect(Controller):
 
         actual_temperature = self.calculate_temperature(actual_loading_percent)
         self.net.trafo.at[self.trafo_index, 'temperature_measured'] = actual_temperature
+        self.net.trafo.at[self.trafo_index, 'actual_temperature'] = actual_temperature
         print(f"\n Time step {time_step}: The actual temperature of transformer {self.trafo_index} is {actual_temperature:.2f}°C, actual loading percent is {actual_loading_percent:.2f}")
 
         # Check if an FDI attack should be applied at this specific time step for this transformer
@@ -64,6 +69,10 @@ class TransformerDisconnect(Controller):
             net.trafo.at[self.trafo_index, "in_service"] = False
         else:
             net.trafo.at[self.trafo_index, "in_service"] = True
+        
+        if actual_temperature < 105 and net.trafo.at[self.trafo_index, "in_service"]:
+            self.fp += 1
+
         self.controller_converged = True
 
     def time_step(self, net, time):

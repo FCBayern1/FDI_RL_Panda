@@ -1,16 +1,17 @@
 import pandas as pd
 from pandapower.plotting.plotly import vlevel_plotly
-from utils.network import create_network
+from utils.network import create_network, create_30_network
 import os
 import matplotlib.pyplot as plt
 import plotly.io as pio
 import seaborn as sns
 
 
-def plot_network():
-    fig = vlevel_plotly(create_network())
-    fig.write_image("pics/voltage_level_plot.png")
+def plot_network(path = "pics/voltage_level_plot.png"):
+    fig = vlevel_plotly(create_30_network())
+    fig.write_image(path)
 
+# plot_network()
 
 def plot_curves(file_path, output_path=None):
     if not os.path.exists(file_path):
@@ -21,7 +22,7 @@ def plot_curves(file_path, output_path=None):
 
     plt.figure(figsize=(10, 5))
     for trafo_id in trafo_results.columns[1:]:
-        plt.plot(time_steps, trafo_results[trafo_id]*100, label=f"Transformer {trafo_id}")
+        plt.plot(time_steps, trafo_results[trafo_id], label=f"Transformer {trafo_id}")
 
     plt.xlabel("Time Step")
     plt.ylabel("Transformer Loading (%)")

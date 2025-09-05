@@ -1,7 +1,7 @@
 import random
 
 
-def generate_fdi_list(total_steps, num_attacks=10, min_faulty_temperature=105.0, max_faulty_temperature=110.0):
+def generate_fdi_list(total_steps, num_attacks=10, min_faulty_temperature=150.0, max_faulty_temperature=160.0):
     fdi_list = []
     attack_steps = random.sample(range(total_steps), num_attacks)
 

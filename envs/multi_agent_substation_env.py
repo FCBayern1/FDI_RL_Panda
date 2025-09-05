@@ -1,14 +1,12 @@
 import numpy as np
 import pandapower as pp
-from utils.network import create_network
-
 
 class multi_agent_substation_env:
     def __init__(self, net, trafo_indices, delta_p=0.05, initial_p=0.0,
                  voltage_tolerance=0.05, voltage_penalty_factor=10.0,
-                 line_loading_limit=100.0, power_flow_penalty_factor=5.0,
+                 line_loading_limit=20.0, power_flow_penalty_factor=5.0,
                  load_reward_factor=20.0, transformer_reward_factor=20.0,
-                 disconnection_penalty_factor=50.0, total_steps=200):
+                 disconnection_penalty_factor=50.0, total_steps=200, max_temperature = 90):
         self.net = net
         self.trafo_indices = trafo_indices
         self.delta_p = delta_p
@@ -26,43 +24,39 @@ class multi_agent_substation_env:
         self.T_ambient = 25.0
         self.T_rated = 65.0
         self.n = 1.6
-
-
-    def reset(self):
-        self.step_count = 0
-        net = create_network()
-        self.net = net
-
-        self.p = {index: self.initial_p for index in self.trafo_indices}
-
-        try:
-            pp.runpp(self.net)
-        except pp.LoadflowNotConverged:
-            print("Initial power flow did not converge")
-
-        return {index: self.get_local_state(index) for index in self.trafo_indices}
+        self.max_temperature = max_temperature
+        self.p = {index: initial_p for index in trafo_indices}
 
     def get_local_state(self, trafo_index):
+        # if "temperature_measured" not in self.net.trafo.columns:
+        #     self.net.trafo["temperature_measured"] = np.nan
+        # if "actual_temperature" not in self.net.trafo.columns:
+        #     self.net.trafo["actual_temperature"] = np.nan
+        # print(f"[Env] net id = {id(self.net)}, temperature_measured = {self.net.trafo['temperature_measured'].tolist()}")
         try:
             bus_voltages = self.net.res_bus.vm_pu.values
             power_flows = self.net.res_line.loading_percent.values
             real_transformer_loading = np.nan_to_num(self.net.res_trafo.loading_percent.values, nan=0.0)
-            actual_temperature = self.T_ambient + self.T_rated * (real_transformer_loading[trafo_index]) ** self.n
+            actual_temperature = self.T_ambient + self.T_rated * (real_transformer_loading[trafo_index]/100) ** self.n
+            if "temperature_measured" in self.net.trafo.columns:
+                temperature_reading = self.net.trafo.at[trafo_index, "temperature_measured"]
+            else:
+                print("no temperature reading value!!!!!!!!!!!!!!")
             self.temperature_history[trafo_index] = np.roll(self.temperature_history[trafo_index], shift=-1)
-            self.temperature_history[trafo_index][-1] = actual_temperature
+            self.temperature_history[trafo_index][-1] = temperature_reading
             temperature_trend = np.mean(self.temperature_history[trafo_index])
 
             local_state = np.concatenate([
-                bus_voltages,  # num_buses
-                power_flows,  # num_lines
+                bus_voltages,  # length is num_buses
+                power_flows,  # length is num_lines
                 [real_transformer_loading[trafo_index]],
                 [actual_temperature],
                 [temperature_trend],
-                [self.p[trafo_index]]
+                [self.p[trafo_index]],
+                [temperature_reading]
             ])
 
-            assert len(
-                local_state) == self.get_state_size(), f"State size mismatch: expected {self.get_state_size()}, got {len(local_state)}"
+            assert len(local_state) == self.get_state_size(), f"State size mismatch: expected {self.get_state_size()}, got {len(local_state)}"
             return local_state
 
         except Exception as e:
@@ -74,36 +68,46 @@ class multi_agent_substation_env:
         num_lines = len(self.net.res_line.loading_percent)
         bus_voltages = state[:num_buses]
         power_flows = state[num_buses:num_buses + num_lines]
-        real_loading = state[-4]  # Transformer loading
-        actual_temperature = state[-3]  # Actual temperature
-        temperature_trend = state[-2]  # Temperature trend
-
+        real_loading = state[-5]
+        actual_temperature = state[-4]
+        temperature_trend = state[-3]
+        p_disconnect = state[-2]
+        temperature_reading = state[-1]
 
         voltage_deviation = np.sum(np.maximum(np.abs(bus_voltages - 1.0) - self.voltage_tolerance, 0))
         voltage_penalty = -voltage_deviation * self.voltage_penalty_factor
 
         overloaded_lines = np.sum(power_flows > self.line_loading_limit)
-        line_loading_penalty = -overloaded_lines * self.power_flow_penalty_factor
+        line_penalty = -overloaded_lines * self.power_flow_penalty_factor
 
-        temperature_residual = np.abs(actual_temperature - temperature_trend)
-        temp_penalty = -50 if temperature_residual > 5 else 10
-
-        if real_loading > 1:
-            load_penalty = - (real_loading - 1) * self.transformer_reward_factor
+        temp_diff = temperature_reading - temperature_trend
+        if temp_diff > 3:
+            temp_penalty = -10
+        elif temp_diff < -3:
+            temp_penalty = -5
         else:
-            load_penalty = (1 - real_loading) * self.transformer_reward_factor
+            temp_penalty = 5
 
-        overtemp_penalty = 50 if actual_temperature >100 else -10
 
-        reward = voltage_penalty + line_loading_penalty + temp_penalty + load_penalty + overtemp_penalty
+        reward = (
+                voltage_penalty +
+                line_penalty +
+                temp_penalty
+        )
 
         return reward
 
     def get_state_size(self):
+        if not hasattr(self.net, "res_bus") or self.net.res_bus.empty:
+            try:
+                pp.runpp(self.net)
+            except pp.LoadflowNotConverged:
+                print("[Env] Power flow failed, cannot get state size")
+                return 0
         num_buses = len(self.net.res_bus.vm_pu)
         num_lines = len(self.net.res_line.loading_percent)
 
-        transformer_features = 4
+        transformer_features = 5
 
         return num_buses + num_lines + transformer_features
 

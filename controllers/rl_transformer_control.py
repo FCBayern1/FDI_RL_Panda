@@ -1,15 +1,13 @@
 import torch
 import numpy as np
 from pandapower.control.basic_controller import Controller
-
 import pandapower as pp
 from models.dqn_agent import DQNAgent
 
 class DQNTransformerController(Controller):
-    def __init__(self, net, env, trafo_index, max_temperature, T_ambient=25.0, T_rated=65.0, n=1.6, fdi_list=None,
+    def __init__(self, env, trafo_index, max_temperature, T_ambient=25.0, T_rated=65.0, n=1.6, fdi_list=None,
                  total_steps=200, in_service=True, order=0, level=0, model_path=None, **kwargs):
-        super().__init__(net, in_service=in_service, order=order, level=level, **kwargs)
-        self.net = net
+        super().__init__(env.net, in_service=in_service, order=order, level=level, **kwargs)
         self.env = env
         self.trafo_index = trafo_index
         self.max_temperature = max_temperature
@@ -23,10 +21,11 @@ class DQNTransformerController(Controller):
         self.trafo_disconnected = False
         self.controller_converged = False
         self.agent = None
+
         self.tp = 0
         self.fp = 0
-        self.tn = 0
         self.fn = 0
+        self.tn = 0
 
         if model_path:
             self.agent = DQNAgent(env.get_state_size(), 2)
@@ -34,15 +33,16 @@ class DQNTransformerController(Controller):
             self.agent.eval()
 
     def calculate_temperature(self, loading_percent):
-        # Calculate the transformer temperature based on loading percent
         return self.T_ambient + self.T_rated * (loading_percent) ** self.n
 
     def control_step(self, net):
         if self.controller_converged:
             return
+
         time_step = self.current_time_step
         if time_step is None:
             return
+
         try:
             actual_loading_percent = np.nan_to_num(net.res_trafo.at[self.trafo_index, 'loading_percent'], 0.0)
         except KeyError:
@@ -51,50 +51,50 @@ class DQNTransformerController(Controller):
             return
 
         actual_temperature = self.calculate_temperature(actual_loading_percent)
-        self.net.trafo.at[self.trafo_index, 'temperature_measured'] = actual_temperature
-        print(f"\n Time step {time_step}: The actual temperature of transformer {self.trafo_index} is {actual_temperature:.2f}°C, actual loading percent is {actual_loading_percent:.2f}")
+        self.env.net.trafo.at[self.trafo_index, 'actual_temperature'] = actual_temperature
+        self.env.net.trafo.at[self.trafo_index, 'temperature_measured'] = actual_temperature
+
+        print(f"\nTime step {time_step}: Actual temperature of transformer {self.trafo_index} = {actual_temperature:.2f}°C")
 
         current_temperature_reading = actual_temperature
         fdi_attack = False
+
         for f_step, faulty_temperature in self.fdi_list:
             if f_step == time_step:
-                self.net.trafo.at[self.trafo_index, 'temperature'] = faulty_temperature
+                self.env.net.trafo.at[self.trafo_index, 'temperature_measured'] = faulty_temperature
                 current_temperature_reading = faulty_temperature
-                print(f"🌹🌹Time step {time_step}: FDI Injected, setting trafo {self.trafo_index} temperature to {faulty_temperature}°C")
+                print(f"🌹 FDI Injected at step {time_step}, transformer {self.trafo_index} fake temp = {faulty_temperature}°C")
                 fdi_attack = True
                 break
 
-        if self.net.trafo.at[self.trafo_index, 'temperature_measured'] is None:
-            self.net.trafo.at[self.trafo_index, 'temperature_measured'] = actual_temperature
+        if self.env.net.trafo.at[self.trafo_index, 'temperature_measured'] is None:
+            self.env.net.trafo.at[self.trafo_index, 'temperature_measured'] = actual_temperature
 
-        print(f"Time step {time_step}: Transformer {self.trafo_index} current reading: {current_temperature_reading:.2f}°C")
+        print(f"Time step {time_step}: Transformer {self.trafo_index} measured reading = {current_temperature_reading:.2f}°C")
 
+        # ----------------- RL决策与断开 -----------------
         state = self.env.get_local_state(self.trafo_index)
         action = self.select_action(state)
+
         self.env.update_disconnection_probabilities([action])
         net.trafo.at[self.trafo_index, "in_service"] = np.random.rand() > self.env.p[self.trafo_index]
-        status_str = "Disconnected" if not net.trafo.at[self.trafo_index, "in_service"] else "In Service"
-        print(
-            f"Time step {time_step}, RL agent set the trafo {self.trafo_index} {status_str}, with disconnection p {self.env.p[self.trafo_index]}")
-        predicted_disconnect = not net.trafo.at[self.trafo_index, "in_service"] # trafo disconnection (if disconnect then true, if in_service then false)
-        actual_overtemp = actual_temperature > self.max_temperature # if actual temperature is overtemp then true, if normal then false
-        # if fdi_attack:
-        #     if actual_overtemp and predicted_disconnect:
-        #         self.tp += 1
-        #     elif not actual_overtemp and predicted_disconnect:
-        #         self.fp += 1
-        # else:
-        #     if not actual_overtemp and not predicted_disconnect:
-        #         self.tn += 1
-        #     elif actual_overtemp and predicted_disconnect:
-        #         self.fn += 1
-        if actual_overtemp and predicted_disconnect:
+        is_disconnected = not net.trafo.at[self.trafo_index, "in_service"]
+
+        status_str = "Disconnected" if is_disconnected else "In Service"
+        print(f"Time step {time_step}: RL agent sets trafo {self.trafo_index} {status_str}, p = {self.env.p[self.trafo_index]:.2f}")
+
+        should_disconnect = actual_temperature > self.max_temperature
+        if should_disconnect and is_disconnected:
+            print("should disconnect and disconnect, actual temperature is: ", actual_temperature)
             self.tp += 1
-        elif not actual_overtemp and predicted_disconnect:
+        elif should_disconnect and not is_disconnected:
+            print("should disconnect but not disconnect, actual temperature is: ", actual_temperature)
             self.fn += 1
-        elif actual_overtemp and not predicted_disconnect:
+        elif not should_disconnect and is_disconnected:
+            print("should not disconnect but disconnect, actual temperature is: ", actual_temperature)
             self.fp += 1
-        elif not actual_overtemp and not predicted_disconnect:
+        elif not should_disconnect and not is_disconnected:
+            print("should not disconnect and not disconnect, actual temperature is: ", actual_temperature)
             self.tn += 1
 
         self.env.step_count = self.current_time_step
@@ -111,7 +111,26 @@ class DQNTransformerController(Controller):
 
     def time_step(self, net, time):
         self.current_time_step = time
-        self.controller_converged = False  # Reset convergence at the beginning of each time step
+        self.controller_converged = False
 
     def is_converged(self, net):
         return self.controller_converged
+
+
+    def print_confusion_matrix(self):
+        print("\n[Confusion Matrix Summary]")
+        print(f"TP (该断断了):     {self.tp}")
+        print(f"FN (该断没断):     {self.fn}")
+        print(f"TN (不该断没断):   {self.tn}")
+        print(f"FP (不该断断了):   {self.fp}")
+
+        total = self.tp + self.fp + self.fn + self.tn
+        accuracy = (self.tp + self.tn) / total if total > 0 else 0
+        precision = self.tp / (self.tp + self.fp) if (self.tp + self.fp) > 0 else 0
+        recall = self.tp / (self.tp + self.fn) if (self.tp + self.fn) > 0 else 0
+        f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0
+
+        print(f"Accuracy:  {accuracy:.3f}")
+        print(f"Precision: {precision:.3f}")
+        print(f"Recall:    {recall:.3f}")
+        print(f"F1 Score:  {f1:.3f}")

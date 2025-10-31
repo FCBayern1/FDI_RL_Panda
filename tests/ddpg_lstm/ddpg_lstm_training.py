@@ -113,7 +113,7 @@ def inject_transformer_overload_safely(net, time_steps, events_per_trafo=3,
                 data_source=ds,
                 profile_name="p_mw"
             )
-            print(f"✅ Injected profile to Load {load_idx} for Trafo {trafo_idx}")
+            print(f"Injected profile to Load {load_idx} for Trafo {trafo_idx}")
 
 def build_net(time_steps=100, max_temperature=max_temperature):
     net = create_30_network()

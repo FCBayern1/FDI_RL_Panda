@@ -118,9 +118,9 @@ class LSTM_MultiAgentEnv:
 
         # Part 2: Voltage penalty
         r_power = 0.0
-        if vm_pu < -0.05:  # 相当于 vm_pu < 0.95
+        if vm_pu < -0.05:  #  vm_pu < 0.95
             r_power -= (abs(vm_pu + 0.05)) * 2.0
-        if not disconnect and max_line > 1.2:  # 仍然是实际 max loading > 120%
+        if not disconnect and max_line > 1.2:  #  max loading > 120%
             r_power -= (max_line - 1.2) * 1.0
 
         # Part 3: Trend penalty

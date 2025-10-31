@@ -13,7 +13,6 @@ from src.plots.plot_utils import plot_curves, plot_confusion_matrix
 from src.utils.Generate_fdi import generate_fdi_list
 from src.utils.network import create_stable_gen_profile, create_30_network
 
-# ---------------- 参数配置 ----------------
 seed = 42
 random.seed(seed)
 np.random.seed(seed)
@@ -24,20 +23,17 @@ n = 1.6
 max_temperature = 147.44
 model_dir = "./models_ddpg"
 
-
 def add_support_sgen_to_transformers(net, time_steps=200, base_p_mw=80.0, fluctuation=20.0):
 
     for i, row in net.trafo.iterrows():
         hv_bus = row["hv_bus"]
 
-        # 创建一个 sgen，初始有功功率为 base_p_mw
         sgen_idx = pp.create_sgen(net, bus=hv_bus, p_mw=base_p_mw, q_mvar=0.0, name=f"sgen_trafo_{i}")
-        print(f"⚡ Created sgen {sgen_idx} at hv_bus {hv_bus} for Trafo {i}")
+        print(f" Created sgen {sgen_idx} at hv_bus {hv_bus} for Trafo {i}")
 
-        # 创建时间变化的 profile：base ± fluctuation * sin
         time = np.arange(time_steps)
         profile = base_p_mw + fluctuation * np.sin(2 * np.pi * time / time_steps)
-        profile = np.clip(profile, 0, None)  # 保证不为负
+        profile = np.clip(profile, 0, None)
 
         profile_df = pd.DataFrame({"p_mw": profile})
         ds = DFData(profile_df)
@@ -46,7 +42,7 @@ def add_support_sgen_to_transformers(net, time_steps=200, base_p_mw=80.0, fluctu
                      element_index=[sgen_idx],
                      data_source=ds,
                      profile_name="p_mw")
-        print(f"✅ Attached time-varying control to sgen {sgen_idx}")
+        print(f"Attached time-varying control to sgen {sgen_idx}")
 
 def inject_transformer_overload_safely(net, time_steps, events_per_trafo=3,
                                        base_load=10.0,
@@ -59,7 +55,7 @@ def inject_transformer_overload_safely(net, time_steps, events_per_trafo=3,
         if matched_loads.empty:
             new_idx = pp.create_load(net, bus=lv_bus, p_mw=base_load, q_mvar=0.0, name=f"synthetic_trafo_{trafo_idx}")
             load_indices = [new_idx]
-            print(f"➕ Created synthetic load {new_idx} at lv_bus {lv_bus} for Trafo {trafo_idx}")
+            print(f"Created synthetic load {new_idx} at lv_bus {lv_bus} for Trafo {trafo_idx}")
         else:
             load_indices = matched_loads.index.tolist()
 
@@ -70,7 +66,7 @@ def inject_transformer_overload_safely(net, time_steps, events_per_trafo=3,
             start = random.randint(0, time_steps - dur)
             factor = random.uniform(min_factor, max_factor)
             profile[start:start+dur] *= factor
-            print(f"🔥 Trafo {trafo_idx} overload: t={start}-{start+dur}, factor={factor:.2f}")
+            print(f"Trafo {trafo_idx} overload: t={start}-{start+dur}, factor={factor:.2f}")
 
         profile_df = pd.DataFrame({"p_mw": profile})
 
@@ -82,9 +78,9 @@ def inject_transformer_overload_safely(net, time_steps, events_per_trafo=3,
                 data_source=ds,
                 profile_name="p_mw"
             )
-            print(f"✅ Injected profile to Load {load_idx} for Trafo {trafo_idx}")
+            print(f"Injected profile to Load {load_idx} for Trafo {trafo_idx}")
 
-# ---------------- 网络构建 ----------------
+# ---------------- network ----------------
 net = create_30_network()
 trafo_indices = list(net.trafo.index)
 
@@ -134,7 +130,6 @@ for i, idx in enumerate(trafo_indices):
         total_steps=time_steps
     )
 
-
 for i, idx in enumerate(trafo_indices):
     model_path = f"{model_dir}/actor_trafo_{idx}.pth"
     controller = DDPGTransformerController(
@@ -163,7 +158,7 @@ run_timeseries(net, time_steps=range(time_steps))
 
 plot_curves(f"{output_path}/res_trafo/loading_percent.csv", f"{output_path}/loading_curves.png")
 
-# 混淆矩阵统计
+# 
 ddpg_controllers = [ctrl for ctrl in net.controller["object"] if isinstance(ctrl, DDPGTransformerController)]
 
 total_tp, total_fp, total_fn, total_tn = 0, 0, 0, 0
@@ -176,11 +171,11 @@ for controller in ddpg_controllers:
     total_fn += controller.fn
     total_tn += controller.tn
 
-print("\n✅ 混淆矩阵统计汇总:")
-print(f"✅ True Positive (TP) 该断，断了 = {total_tp}")
-print(f"❌ False Positive (FP) 不该断，断了 = {total_fp}")
-print(f"❌ False Negative (FN) 该断，没断 = {total_fn}")
-print(f"✅ True Negative (TN) 不该断，没断 = {total_tn}")
+print("\n Confusion Matrix Statistics:")
+print(f"True Positive (TP) = {total_tp}")
+print(f"False Positive (FP) = {total_fp}")
+print(f"False Negative (FN) = {total_fn}")
+print(f"True Negative (TN) = {total_tn}")
 
 conf_matrix = np.array([[total_tp, total_fp], [total_fn, total_tn]])
 plot_confusion_matrix(conf_matrix)

@@ -63,7 +63,7 @@ class DQNTransformerController(Controller):
             if f_step == time_step:
                 self.env.net.trafo.at[self.trafo_index, 'temperature_measured'] = faulty_temperature
                 current_temperature_reading = faulty_temperature
-                print(f"🌹 FDI Injected at step {time_step}, transformer {self.trafo_index} fake temp = {faulty_temperature}°C")
+                print(f" FDI Injected at step {time_step}, transformer {self.trafo_index} fake temp = {faulty_temperature}°C")
                 fdi_attack = True
                 break
 
@@ -72,7 +72,7 @@ class DQNTransformerController(Controller):
 
         print(f"Time step {time_step}: Transformer {self.trafo_index} measured reading = {current_temperature_reading:.2f}°C")
 
-        # ----------------- RL决策与断开 -----------------
+        # ----------------- RL -----------------
         state = self.env.get_local_state(self.trafo_index)
         action = self.select_action(state)
 
@@ -116,13 +116,12 @@ class DQNTransformerController(Controller):
     def is_converged(self, net):
         return self.controller_converged
 
-
     def print_confusion_matrix(self):
         print("\n[Confusion Matrix Summary]")
-        print(f"TP (该断断了):     {self.tp}")
-        print(f"FN (该断没断):     {self.fn}")
-        print(f"TN (不该断没断):   {self.tn}")
-        print(f"FP (不该断断了):   {self.fp}")
+        print(f"TP ():     {self.tp}")
+        print(f"FN ():     {self.fn}")
+        print(f"TN ():   {self.tn}")
+        print(f"FP ():   {self.fp}")
 
         total = self.tp + self.fp + self.fn + self.tn
         accuracy = (self.tp + self.tn) / total if total > 0 else 0

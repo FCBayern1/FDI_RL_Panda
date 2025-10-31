@@ -13,7 +13,6 @@ def create_network():
 
     return net
 
-
 def create_ds(time_steps=100, base_gen=50, gen_amplitude=50):
     p_mw = base_gen + gen_amplitude * np.sin(np.linspace(0, 2 * np.pi, time_steps))
     df_gen = pd.DataFrame({'p_mw': p_mw}, index=range(time_steps))
@@ -28,7 +27,7 @@ def create_30_network():
         connected_loads = net.load[net.load.bus == lv_bus]
 
         if not connected_loads.empty:
-            print(f"🔍 Transformer {idx} supplies bus {lv_bus} with loads. Adding redundancy.")
+            print(f" Transformer {idx} supplies bus {lv_bus} with loads. Adding redundancy.")
 
             candidate_buses = list(set(net.bus.index) - {lv_bus})
             if candidate_buses:
@@ -44,7 +43,7 @@ def create_30_network():
                     max_i_ka=0.5,
                     name=f"tie_line_{lv_bus}_{target_bus}"
                 )
-                print(f"✅ Added tie-line from bus {lv_bus} to bus {target_bus}")
+                print(f" Added tie-line from bus {lv_bus} to bus {target_bus}")
             else:
                 pp.create_gen(
                     net,
@@ -54,17 +53,14 @@ def create_30_network():
                     slack=False,
                     name=f"backup_gen_bus{lv_bus}"
                 )
-                print(f"⚡ Added backup generator at bus {lv_bus}")
+                print(f" Added backup generator at bus {lv_bus}")
     return net
-
-
 
 def create_stable_gen_profile(net, time_steps=100, base_gen_factor=2.0):
     max_load = sum(net.load["p_mw"]) * len(net.gen) * base_gen_factor
     gen_profile = np.full(time_steps, max_load, dtype=float)
     df = pd.DataFrame({"p_mw": gen_profile}, index=range(time_steps))
     return DFData(df)
-
 
 def create_load_profile(time_steps=100, base_load=60, load_amplitude=30, overload_steps=None, overload_factor=2.0):
     hours = np.linspace(0, 24, time_steps)
@@ -83,5 +79,4 @@ def create_load_profile(time_steps=100, base_load=60, load_amplitude=30, overloa
     dynamic_load_profile = np.clip(dynamic_load_profile + noise, 0, None)
 
     return pd.DataFrame({"p_mw": dynamic_load_profile})
-
 

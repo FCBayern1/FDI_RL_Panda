@@ -60,7 +60,6 @@ def test_runpp_behavior():
 
     return True
 
-
 def test_step_logic():
     """Test if step() logic in our env is correct"""
     print("\n" + "="*60)
@@ -123,14 +122,13 @@ def test_step_logic():
               f"loading={loading:.2f}%, temp={temp:.2f}°C")
 
     print("\n[Key Findings]")
-    print("✓ Step logic is correct:")
+    print(" Step logic is correct:")
     print("  1. Modify network topology (in_service)")
     print("  2. Run runpp() to update power flow results")
     print("  3. Calculate temperatures from updated loading")
     print("  4. Return observation with current state")
 
     return True
-
 
 def test_loading_redistribution():
     """Test that disconnecting a trafo redistributes load"""
@@ -164,13 +162,12 @@ def test_loading_redistribution():
             print(f"Trafo {idx}: {loading:.2f}% (DISCONNECTED)")
 
     print("\n[Key Finding]")
-    print("✓ When a trafo is disconnected:")
+    print(" When a trafo is disconnected:")
     print("  - Its loading becomes 0% (or NaN)")
     print("  - Other trafos/lines may increase loading")
     print("  - runpp() handles power flow redistribution")
 
     return True
-
 
 def main():
     print("\nTesting PandaPower behavior for RL environment")
@@ -183,7 +180,7 @@ def main():
 
     print("\n" + "="*60)
     if success:
-        print("✓ ALL TESTS PASSED")
+        print(" ALL TESTS PASSED")
         print("\nConclusion:")
         print("1. runpp() UPDATES res_* tables (loading, voltage, etc.)")
         print("2. runpp() does NOT modify input tables (in_service stays as set)")
@@ -192,12 +189,11 @@ def main():
         print("   - Run runpp() -> update power flow results")
         print("   - Calculate temps -> use updated loading")
         print("   - Return obs -> reflect current state")
-        print("\n✓ The environment is ready to use!")
+        print("\n The environment is ready to use!")
     else:
-        print("✗ SOME TESTS FAILED")
+        print(" SOME TESTS FAILED")
         print("Please check the implementation")
     print("="*60)
-
 
 if __name__ == "__main__":
     main()

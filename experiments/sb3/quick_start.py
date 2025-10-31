@@ -1,9 +1,5 @@
 """
-快速启动脚本
 
-使用预定义的配置快速开始训练或评估
-
-使用方法：
     python quick_start.py --scenario basic --mode train
     python quick_start.py --scenario high_fdi --mode train
     python quick_start.py --scenario debug --mode eval --model_path ./models_sb3/xxx/ppo_final
@@ -13,7 +9,6 @@ import argparse
 import sys
 from config_example import get_config, print_config
 from train_sb3 import train, evaluate
-
 
 def main():
     parser = argparse.ArgumentParser(description='Quick Start for Substation RL Training')
@@ -36,10 +31,10 @@ def main():
 
     args = parser.parse_args()
 
-    # 获取配置
+    # 
     config = get_config(args.scenario)
 
-    # 打印配置
+    # 
     print(f"\n{'='*80}")
     print(f"Quick Start - Scenario: {args.scenario.upper()}")
     print(f"Mode: {args.mode.upper()}")
@@ -47,8 +42,8 @@ def main():
     print_config(config)
 
     if args.mode == 'train':
-        # 训练模式
-        print(f"\n🚀 Starting training with '{args.scenario}' configuration...\n")
+        # 
+        print(f"\n Starting training with '{args.scenario}' configuration...\n")
 
         train(
             algorithm=config['training']['algorithm'],
@@ -64,23 +59,23 @@ def main():
             seed=args.seed,
         )
 
-        print("\n✅ Training completed!")
-        print("\n💡 To view training progress, run:")
+        print("\n Training completed!")
+        print("\n To view training progress, run:")
         print("   tensorboard --logdir ./logs_sb3")
-        print("\n💡 To evaluate the model, run:")
+        print("\n To evaluate the model, run:")
         print(f"   python quick_start.py --scenario {args.scenario} --mode eval "
               f"--model_path <model_path>")
 
     elif args.mode == 'eval':
-        # 评估模式
+        # 
         if args.model_path is None:
-            print("\n❌ Error: --model_path is required for evaluation mode")
+            print("\n Error: --model_path is required for evaluation mode")
             print("\nExample:")
             print("   python quick_start.py --scenario basic --mode eval "
                   "--model_path ./models_sb3/ppo_case14_20250101_120000/ppo_final")
             sys.exit(1)
 
-        print(f"\n🔍 Starting evaluation with '{args.scenario}' configuration...\n")
+        print(f"\n Starting evaluation with '{args.scenario}' configuration...\n")
 
         evaluate(
             model_path=args.model_path,
@@ -93,8 +88,7 @@ def main():
             seed=args.seed,
         )
 
-        print("\n✅ Evaluation completed!")
-
+        print("\n Evaluation completed!")
 
 if __name__ == '__main__':
     main()

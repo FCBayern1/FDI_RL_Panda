@@ -18,8 +18,8 @@ class Actor(nn.Module):
 
     def forward(self, state_seq, hidden=None):
         lstm_out, hidden = self.lstm(state_seq, hidden)
-        last_output = lstm_out[:, -1, :]  # 取最后时间步
-        action = self.activation(self.fc(last_output))  # 输出断开概率
+        last_output = lstm_out[:, -1, :]  # 
+        action = self.activation(self.fc(last_output))  # 
         return action, hidden
 
 class Critic(nn.Module):
@@ -36,7 +36,6 @@ class Critic(nn.Module):
         x = F.relu(self.fc1(x))
         q_value = self.fc2(x)
         return q_value, hidden
-
 
 class MultiAgentLSTMDDPGTrainer:
     def __init__(self, state_dim, action_dim, trafo_indices, gamma=0.99, tau=0.005,
@@ -132,7 +131,7 @@ class MultiAgentLSTMDDPGTrainer:
         for idx, agent in self.agents.items():
             torch.save(agent["actor"].state_dict(), f"{prefix}/actor_trafo_{idx}.pth")
             torch.save(agent["critic"].state_dict(), f"{prefix}/critic_trafo_{idx}.pth")
-        print(f"✅ All models saved to: {prefix}")
+        print(f" All models saved to: {prefix}")
 
     def load_all_models(self, prefix="./models_lstm_ddpg"):
         for idx, agent in self.agents.items():
@@ -143,9 +142,9 @@ class MultiAgentLSTMDDPGTrainer:
                 agent["critic"].load_state_dict(torch.load(critic_path))
                 agent["target_actor"].load_state_dict(agent["actor"].state_dict())
                 agent["target_critic"].load_state_dict(agent["critic"].state_dict())
-                print(f"🔁 Loaded model for Trafo {idx}")
+                print(f" Loaded model for Trafo {idx}")
             else:
-                print(f"⚠️ Model not found for Trafo {idx}, skipping.")
+                print(f" Model not found for Trafo {idx}, skipping.")
 
     def learn_all(self):
         for idx in self.agents:

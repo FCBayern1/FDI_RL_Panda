@@ -9,12 +9,12 @@ Date: 2025-10-31
 
 ```
 experiments/
-├── dqn/              # Deep Q-Network experiments
-├── ddpg/             # Deep Deterministic Policy Gradient experiments
-├── lstm_ddpg/        # LSTM-enhanced DDPG experiments
-├── baseline/         # Baseline experiments
-├── sb3/              # Stable-Baselines3 experiments
-└── plot_utils.py     # Shared plotting utilities
+ dqn/              # Deep Q-Network experiments
+ ddpg/             # Deep Deterministic Policy Gradient experiments
+ lstm_ddpg/        # LSTM-enhanced DDPG experiments
+ baseline/         # Baseline experiments
+ sb3/              # Stable-Baselines3 experiments
+ plot_utils.py     # Shared plotting utilities
 ```
 
 ## Algorithm Categories

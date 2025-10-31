@@ -78,35 +78,35 @@ python experiments/lstm_ddpg/train_v2.py
 
 ```
 FDI_RL_Panda/
-├── experiments/          # All experiment code
-│   ├── dqn/             # DQN experiments
-│   ├── ddpg/            # DDPG experiments
-│   ├── lstm_ddpg/       # LSTM-DDPG experiments
-│   ├── baseline/        # Baseline experiments
-│   └── sb3/             # Stable-Baselines3 experiments
-│
-├── src/                 # Shared source code
-│   ├── envs/           # Environment definitions
-│   │   └── gym_substation_env.py  # Gymnasium environment
-│   ├── models/         # Neural network models
-│   ├── controllers/    # PandaPower controllers
-│   ├── utils/          # Utility functions
-│   └── plots/          # Plotting utilities
-│
-├── outputs/            # Experiment outputs (by algorithm)
-│   ├── dqn/            # DQN outputs
-│   ├── ddpg/           # DDPG outputs
-│   ├── lstm_ddpg/      # LSTM-DDPG outputs
-│   ├── ppo/            # PPO outputs
-│   ├── a2c/            # A2C outputs
-│   ├── sac/            # SAC outputs
-│   └── td3/            # TD3 outputs
-│
-├── docs/               # Detailed documentation
-├── configs/            # Configuration files
-├── scripts/            # Utility scripts
-├── requirements.txt    # Dependencies
-└── setup.py           # Package setup
+ experiments/          # All experiment code
+    dqn/             # DQN experiments
+    ddpg/            # DDPG experiments
+    lstm_ddpg/       # LSTM-DDPG experiments
+    baseline/        # Baseline experiments
+    sb3/             # Stable-Baselines3 experiments
+
+ src/                 # Shared source code
+    envs/           # Environment definitions
+       gym_substation_env.py  # Gymnasium environment
+    models/         # Neural network models
+    controllers/    # PandaPower controllers
+    utils/          # Utility functions
+    plots/          # Plotting utilities
+
+ outputs/            # Experiment outputs (by algorithm)
+    dqn/            # DQN outputs
+    ddpg/           # DDPG outputs
+    lstm_ddpg/      # LSTM-DDPG outputs
+    ppo/            # PPO outputs
+    a2c/            # A2C outputs
+    sac/            # SAC outputs
+    td3/            # TD3 outputs
+
+ docs/               # Detailed documentation
+ configs/            # Configuration files
+ scripts/            # Utility scripts
+ requirements.txt    # Dependencies
+ setup.py           # Package setup
 ```
 
 ---
@@ -248,10 +248,10 @@ All experiments save outputs to `outputs/{algorithm}/experiment_{timestamp}/`:
 
 ```
 outputs/ddpg/experiment_20251031_120000/
-├── models/              # Trained models (.pth or .zip)
-├── logs/                # Training logs and metrics
-├── results/             # Experiment results
-└── experiment_info.txt  # Metadata
+ models/              # Trained models (.pth or .zip)
+ logs/                # Training logs and metrics
+ results/             # Experiment results
+ experiment_info.txt  # Metadata
 ```
 
 ### Loading Models

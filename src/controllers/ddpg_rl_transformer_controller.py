@@ -58,20 +58,20 @@ class DDPGTransformerController(Controller):
 
         print(f"Time step {time_step}: Actual temperature of transformer {self.trafo_index} = {actual_temp:.2f}°C")
 
-        # 注入 FDI
+        #  FDI
         temp_reading = actual_temp
         for f_step, fake_temp in self.fdi_list:
             if f_step == time_step:
                 net.trafo.at[self.trafo_index, 'temperature_measured'] = fake_temp
                 temp_reading = fake_temp
-                print(f"🌹 FDI Injected: step {time_step}, transformer {self.trafo_index}, fake temp = {fake_temp:.2f}°C")
+                print(f" FDI Injected: step {time_step}, transformer {self.trafo_index}, fake temp = {fake_temp:.2f}°C")
                 break
 
         state = self.normalize_state(self.env.get_local_state(self.trafo_index))
         # print(state)
         action = self.select_action(state)
         self.env.p[self.trafo_index] = action
-        net.trafo.at[self.trafo_index, "in_service"] = np.random.rand() > action # ！！！
+        net.trafo.at[self.trafo_index, "in_service"] = np.random.rand() > action # 
         # if loading_percent > 1:
         #     net.trafo.at[self.trafo_index, "in_service"] = False
         # if loading_percent > 1.0:
@@ -83,7 +83,7 @@ class DDPGTransformerController(Controller):
 
         print(f"Step {time_step}: RL agent sets trafo {self.trafo_index} {'Disconnected' if is_disconnected else 'In Service'} (p={action:.6f})")
 
-        # Confusion Matrix 记录
+        # Confusion Matrix 
         should_disconnect = actual_temp > self.max_temperature
         if should_disconnect and is_disconnected:
             self.tp += 1
@@ -115,10 +115,10 @@ class DDPGTransformerController(Controller):
 
     def print_confusion_matrix(self):
         print("\n[Confusion Matrix Summary]")
-        print(f"TP (该断断了):     {self.tp}")
-        print(f"FN (该断没断):     {self.fn}")
-        print(f"TN (不该断没断):   {self.tn}")
-        print(f"FP (不该断断了):   {self.fp}")
+        print(f"TP ():     {self.tp}")
+        print(f"FN ():     {self.fn}")
+        print(f"TN ():   {self.tn}")
+        print(f"FP ():   {self.fp}")
         total = self.tp + self.fp + self.fn + self.tn
         accuracy = (self.tp + self.tn) / total if total > 0 else 0
         precision = self.tp / (self.tp + self.fp) if (self.tp + self.fp) > 0 else 0
@@ -134,5 +134,4 @@ class DDPGTransformerController(Controller):
             return np.zeros(self.env.get_state_size())
         state_min, state_max = np.min(state), np.max(state)
         return np.nan_to_num((state - state_min) / (state_max - state_min) if state_max - state_min > 0 else state)
-
 

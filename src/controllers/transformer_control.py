@@ -23,7 +23,6 @@ class TransformerDisconnect(Controller):
         self.controller_converged = False
         self.res_trafo_loading_history = []
 
-
     def calculate_temperature(self, loading_percent):
         # Calculate the transformer temperature based on loading percent
         return self.T_ambient + self.T_rated * (loading_percent / 100) ** self.n
@@ -70,7 +69,7 @@ class TransformerDisconnect(Controller):
                 # self.net.trafo.at[self.trafo_index, 'fdi'] = True
                 current_temperature = faulty_temperature # reading
                 print(
-                    f"🌹🌹Time step {time_step}: FDI Injected, setting trafo {self.trafo_index} temperature to {faulty_temperature}°C")
+                    f"Time step {time_step}: FDI Injected, setting trafo {self.trafo_index} temperature to {faulty_temperature}°C")
                 break
 
         # If no FDI attack is specified for this time step, use the actual temperature data

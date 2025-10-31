@@ -21,7 +21,6 @@ class DDPGMultiAgentController(Controller):
         self.n = n
         self.tp = self.fp = self.fn = self.tn = 0
 
-
     def control_step(self, net):
         current_time = self.env.step_count
 
@@ -34,7 +33,7 @@ class DDPGMultiAgentController(Controller):
             action = self.trainer.select_action(idx, state)
             action = float(np.clip(action, 0.0, 1.0))
             self.env.p[idx] = action
-            net.trafo.at[idx, "in_service"] = np.random.rand() > action # 执行动作
+            net.trafo.at[idx, "in_service"] = np.random.rand() > action # 
             print(f"[TRAIN] Trafo {idx} | action={action:.6f}")
             action_dict[idx] = action
 
@@ -65,7 +64,7 @@ class DDPGMultiAgentController(Controller):
             actual_temp = self.calculate_temperature(real_loading)
 
             should_disconnect = (actual_temp > self.max_temperature)
-            did_disconnect = not in_service  # in_service=False 表示断开
+            did_disconnect = not in_service  # in_service=False 
 
             if should_disconnect and did_disconnect:
                 self.tp += 1

@@ -14,7 +14,7 @@ from src.utils.network import create_stable_gen_profile, create_30_network
 import matplotlib.pyplot as plt
 import os
 
-# ---------------- 参数配置 ----------------
+# ----------------  ----------------
 seed = 42
 random.seed(seed)
 np.random.seed(seed)
@@ -72,8 +72,8 @@ def plot_fdi_defense_matrix(env, controller_list, fdi_attack_log):
     plt.grid(True)
 
     legend_elements = [
-        plt.Line2D([0], [0], marker='o', color='w', label='✓ Properly Handled', markerfacecolor='green', markersize=10),
-        plt.Line2D([0], [0], marker='x', color='red', label='✗ Misled by FDI', markersize=10)
+        plt.Line2D([0], [0], marker='o', color='w', label=' Properly Handled', markerfacecolor='green', markersize=10),
+        plt.Line2D([0], [0], marker='x', color='red', label=' Misled by FDI', markersize=10)
     ]
     plt.legend(handles=legend_elements, loc='upper right')
     plt.tight_layout()
@@ -83,21 +83,21 @@ def plot_temperature_comparison(trafo_index, time_steps, output_path, fdi_log):
     measured_path = os.path.join(output_path, "trafo", "temperature_measured.csv")
     actual_path = os.path.join(output_path, "trafo", "actual_temperature.csv")
 
-    # 加载数据
+    # 
     measured_df = pd.read_csv(measured_path, sep=';', index_col=0)
     actual_df = pd.read_csv(actual_path, sep=';', index_col=0)
 
     measured = measured_df.iloc[:, trafo_index]
     actual = actual_df.iloc[:, trafo_index]
 
-    # 获取该 transformer 的所有 FDI 注入时间
+    #  transformer  FDI 
     fdi_steps = [step for (step, idx) in fdi_log.keys() if idx == trafo_index]
 
     plt.figure(figsize=(12, 6))
     plt.plot(actual, label="Actual Temperature", linewidth=2)
     plt.plot(measured, label="Measured Temperature", linestyle='--', color="orange")
 
-    # 标记 FDI 注入
+    #  FDI 
     plt.scatter(fdi_steps, measured.iloc[fdi_steps], color="red", marker='x', s=80, label="FDI Injected")
 
     plt.title(f"Transformer {trafo_index}: Actual vs Measured Temperature")
@@ -108,8 +108,6 @@ def plot_temperature_comparison(trafo_index, time_steps, output_path, fdi_log):
     plt.tight_layout()
     plt.savefig(f"{output_path}/trafo_temp_compare_{trafo_index}.png")
     plt.show()
-
-
 
 def debug_action_statistics(controller_list):
     all_actions = []
@@ -132,14 +130,14 @@ def add_support_sgen_to_transformers(net, time_steps=200, base_p_mw=80.0, fluctu
     for i, row in net.trafo.iterrows():
         hv_bus = row["hv_bus"]
         sgen_idx = pp.create_sgen(net, bus=hv_bus, p_mw=base_p_mw, q_mvar=0.0, name=f"sgen_trafo_{i}")
-        print(f"⚡ Created sgen {sgen_idx} at hv_bus {hv_bus} for Trafo {i}")
+        print(f" Created sgen {sgen_idx} at hv_bus {hv_bus} for Trafo {i}")
         time = np.arange(time_steps)
         profile = base_p_mw + fluctuation * np.sin(2 * np.pi * time / time_steps)
         profile = np.clip(profile, 0, None)
         profile_df = pd.DataFrame({"p_mw": profile})
         ds = DFData(profile_df)
         ConstControl(net, element="sgen", variable="p_mw", element_index=[sgen_idx], data_source=ds, profile_name="p_mw")
-        print(f"✅ Attached time-varying control to sgen {sgen_idx}")
+        print(f" Attached time-varying control to sgen {sgen_idx}")
 
 def inject_transformer_overload_safely(net, time_steps, events_per_trafo=3,
                                        base_load=10.0,
@@ -151,7 +149,7 @@ def inject_transformer_overload_safely(net, time_steps, events_per_trafo=3,
         if matched_loads.empty:
             new_idx = pp.create_load(net, bus=lv_bus, p_mw=base_load, q_mvar=0.0, name=f"synthetic_trafo_{trafo_idx}")
             load_indices = [new_idx]
-            print(f"➕ Created synthetic load {new_idx} at lv_bus {lv_bus} for Trafo {trafo_idx}")
+            print(f" Created synthetic load {new_idx} at lv_bus {lv_bus} for Trafo {trafo_idx}")
         else:
             load_indices = matched_loads.index.tolist()
         profile = np.full(time_steps, base_load)
@@ -160,7 +158,7 @@ def inject_transformer_overload_safely(net, time_steps, events_per_trafo=3,
             start = random.randint(0, time_steps - dur)
             factor = random.uniform(min_factor, max_factor)
             profile[start:start+dur] *= factor
-            print(f"🔥 Trafo {trafo_idx} overload: t={start}-{start+dur}, factor={factor:.2f}")
+            print(f" Trafo {trafo_idx} overload: t={start}-{start+dur}, factor={factor:.2f}")
         profile_df = pd.DataFrame({"p_mw": profile})
         for load_idx in load_indices:
             ds = pp.timeseries.DFData(profile_df)
@@ -170,9 +168,9 @@ def inject_transformer_overload_safely(net, time_steps, events_per_trafo=3,
                 data_source=ds,
                 profile_name="p_mw"
             )
-            print(f"✅ Injected profile to Load {load_idx} for Trafo {trafo_idx}")
+            print(f" Injected profile to Load {load_idx} for Trafo {trafo_idx}")
 
-# ---------------- 网络构建 ----------------
+# ----------------  ----------------
 net = create_30_network()
 trafo_indices = list(net.trafo.index)
 
@@ -251,12 +249,10 @@ for controller in lstm_controllers:
     total_tn += controller.tn
 
 print("Confusion Matrix:")
-print(f"✅ True Positive (TP) 该断，断了 = {total_tp}")
-print(f"❌ False Positive (FP) 不该断，断了 = {total_fp}")
-print(f"❌ False Negative (FN) 该断，没断 = {total_fn}")
-print(f"✅ True Negative (TN) 不该断，没断 = {total_tn}")
-
-
+print(f" True Positive (TP)  = {total_tp}")
+print(f" False Positive (FP)  = {total_fp}")
+print(f" False Negative (FN)  = {total_fn}")
+print(f" True Negative (TN)  = {total_tn}")
 
 def visualize_temperature_defense(env, controller_list, fdi_attack_log, save_path=None):
     time_steps = env.total_steps
@@ -277,7 +273,7 @@ def visualize_temperature_defense(env, controller_list, fdi_attack_log, save_pat
             if fdi_flag:
                 if in_service:
                     colors.append("red")
-                    annotations.append("✓")
+                    annotations.append("")
                 else:
                     colors.append("red")
                     annotations.append("×")
@@ -289,7 +285,7 @@ def visualize_temperature_defense(env, controller_list, fdi_attack_log, save_pat
         bars = plt.bar(range(len(temps)), temps, color=colors)
         for i, ann in enumerate(annotations):
             if ann:
-                plt.text(i, temps[i] + 1.5, ann, ha='center', color='green' if ann == '✓' else 'black', fontsize=14)
+                plt.text(i, temps[i] + 1.5, ann, ha='center', color='green' if ann == '' else 'black', fontsize=14)
 
         plt.title(f"Temperature Histogram at t = {t}")
         plt.xlabel("Transformer Index")

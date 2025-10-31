@@ -38,7 +38,6 @@ log_vars = [
 
 metrics_log = {key: [] for key in ["episode", "TP", "FP", "FN", "TN", "precision", "recall", "f1", "accuracy"]}
 
-
 def plot_reward_trends(reward_history):
     plt.figure(figsize=(12, 6))
     for idx, rewards in reward_history.items():
@@ -62,11 +61,11 @@ def add_support_sgen_to_transformers(net, time_steps=200, base_p_mw=80.0, fluctu
         hv_bus = row["hv_bus"]
 
         sgen_idx = pp.create_sgen(net, bus=hv_bus, p_mw=base_p_mw, q_mvar=0.0, name=f"sgen_trafo_{i}")
-        print(f"⚡ Created sgen {sgen_idx} at hv_bus {hv_bus} for Trafo {i}")
+        print(f" Created sgen {sgen_idx} at hv_bus {hv_bus} for Trafo {i}")
 
         time = np.arange(time_steps)
         profile = base_p_mw + fluctuation * np.sin(2 * np.pi * time / time_steps)
-        profile = np.clip(profile, 0, None)  # 保证不为负
+        profile = np.clip(profile, 0, None)  # 
 
         profile_df = pd.DataFrame({"p_mw": profile})
         ds = DFData(profile_df)
@@ -75,9 +74,7 @@ def add_support_sgen_to_transformers(net, time_steps=200, base_p_mw=80.0, fluctu
                      element_index=[sgen_idx],
                      data_source=ds,
                      profile_name="p_mw")
-        print(f"✅ Attached time-varying control to sgen {sgen_idx}")
-
-
+        print(f" Attached time-varying control to sgen {sgen_idx}")
 
 def inject_transformer_overload_safely(net, time_steps, events_per_trafo=3,
                                        base_load=10.0,
@@ -90,7 +87,7 @@ def inject_transformer_overload_safely(net, time_steps, events_per_trafo=3,
         if matched_loads.empty:
             new_idx = pp.create_load(net, bus=lv_bus, p_mw=base_load, q_mvar=0.0, name=f"synthetic_trafo_{trafo_idx}")
             load_indices = [new_idx]
-            print(f"➕ Created synthetic load {new_idx} at lv_bus {lv_bus} for Trafo {trafo_idx}")
+            print(f" Created synthetic load {new_idx} at lv_bus {lv_bus} for Trafo {trafo_idx}")
         else:
             load_indices = matched_loads.index.tolist()
 
@@ -101,7 +98,7 @@ def inject_transformer_overload_safely(net, time_steps, events_per_trafo=3,
             start = random.randint(0, time_steps - dur)
             factor = random.uniform(min_factor, max_factor)
             profile[start:start+dur] *= factor
-            print(f"🔥 Trafo {trafo_idx} overload: t={start}-{start+dur}, factor={factor:.2f}")
+            print(f" Trafo {trafo_idx} overload: t={start}-{start+dur}, factor={factor:.2f}")
 
         profile_df = pd.DataFrame({"p_mw": profile})
 
@@ -146,7 +143,6 @@ def build_net(time_steps=100, max_temperature=max_temperature):
     OutputWriter(env.net, time_steps=time_steps, output_path="./output_data", output_file_type='.csv', log_variables=log_vars, csv_separator=';')
     return env, trafo_indices
 
-
 env, trafo_indices = build_net(time_steps, max_temperature)
 trainer = MultiAgentLSTMDDPGTrainer(env.get_state_size(), 1, trafo_indices)
 reward_history = {idx: [] for idx in trafo_indices}
@@ -158,10 +154,10 @@ for episode in range(total_episodes):
     try:
         run_timeseries(env.net, range(time_steps))
     except Exception as e:
-        print(f"⚠️ Episode {episode + 1} failed due to error: {e}")
+        print(f" Episode {episode + 1} failed due to error: {e}")
         continue
     finally:
-        print(f"✅ Finished Episode {episode + 1}/{total_episodes}")
+        print(f" Finished Episode {episode + 1}/{total_episodes}")
         print(f"\n[Total Confusion Matrix Stats]")
         print(f"TP: {RLController.tp}")
         print(f"FN: {RLController.fn}")

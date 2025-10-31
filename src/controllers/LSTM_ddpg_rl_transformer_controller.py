@@ -71,7 +71,7 @@ class LSTMTransformerController(Controller):
 
         print(f"Step {time_step}: LSTM-RL sets trafo {self.trafo_index} {'Disconnected' if is_disconnected else 'In Service'} (p={action:.6f})")
 
-        # Confusion Matrix 记录
+        # Confusion Matrix 
         should_disconnect = actual_temp > self.max_temperature
         if should_disconnect and is_disconnected:
             self.tp += 1
@@ -116,10 +116,10 @@ class LSTMTransformerController(Controller):
 
     def print_confusion_matrix(self):
         print("\n[Confusion Matrix Summary]")
-        print(f"TP (该断断了):     {self.tp}")
-        print(f"FN (该断没断):     {self.fn}")
-        print(f"TN (不该断没断):   {self.tn}")
-        print(f"FP (不该断断了):   {self.fp}")
+        print(f"TP ():     {self.tp}")
+        print(f"FN ():     {self.fn}")
+        print(f"TN ():   {self.tn}")
+        print(f"FP ():   {self.fp}")
         total = self.tp + self.fp + self.fn + self.tn
         accuracy = (self.tp + self.tn) / total if total > 0 else 0
         precision = self.tp / (self.tp + self.fp) if (self.tp + self.fp) > 0 else 0

@@ -24,7 +24,7 @@ class LSTM_DDPGMultiAgentController(Controller):
     def control_step(self, net):
         current_time = self.env.step_count
 
-        # Step 1: 收集当前 state
+        # Step 1:  state
         state_dict = {idx: self.normalize_state(self.env.get_local_state(idx)) for idx in self.trafo_indices}
         action_dict = {}
 
@@ -33,13 +33,13 @@ class LSTM_DDPGMultiAgentController(Controller):
             action = self.trainer.select_action(idx, state)
             action = float(np.clip(action, 0.0, 1.0))
             self.env.p[idx] = action
-            net.trafo.at[idx, "in_service"] = np.random.rand() > action  # 执行动作
+            net.trafo.at[idx, "in_service"] = np.random.rand() > action  # 
             print(f"[TRAIN] Trafo {idx} | action={action:.6f}")
             action_dict[idx] = action
 
             print(f"[t = {current_time}] Transformer {idx} action = {action:.3f}, in_service = {net.trafo.at[idx, 'in_service']}")
 
-        # Step 2: 完成上一个 step 的 delayed transition
+        # Step 2:  step  delayed transition
         for idx in self.trafo_indices:
             prev = self.pending_transitions[idx]
             if prev is None:
@@ -51,15 +51,15 @@ class LSTM_DDPGMultiAgentController(Controller):
             done = self.env.step_count >= self.env.total_steps
             self.trainer.store_experience(idx, prev_state, float(prev_action), reward, current_state, done)
 
-        # Step 3: 缓存当前 step 的 state 和 action，供下一步使用
+        # Step 3:  step  state  action
         for idx in self.trafo_indices:
             self.pending_transitions[idx] = (state_dict[idx], action_dict[idx])
 
-        # Step 4: 每个 step 后执行一次多智能体训练
+        # Step 4:  step 
         self.trainer.learn_all()
         self.env.step_count += 1
 
-        # Step 5: 在每个 step 统计 TP, FP, FN, TN
+        # Step 5:  step  TP, FP, FN, TN
         for idx in self.trafo_indices:
             action = self.env.p[idx]
             in_service = net.trafo.at[idx, "in_service"]
@@ -67,7 +67,7 @@ class LSTM_DDPGMultiAgentController(Controller):
             actual_temp = self.calculate_temperature(real_loading)
 
             should_disconnect = (actual_temp > self.max_temperature)
-            did_disconnect = not in_service  # in_service=False 表示断开
+            did_disconnect = not in_service  # in_service=False 
 
             if should_disconnect and did_disconnect:
                 self.tp += 1
@@ -98,5 +98,4 @@ class LSTM_DDPGMultiAgentController(Controller):
 
     def calculate_temperature(self, loading_percent):
         return self.T_ambient + self.T_rated * (loading_percent / 100) ** self.n
-
 

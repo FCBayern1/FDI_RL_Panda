@@ -1,14 +1,12 @@
 """
-使用 Stable-Baselines3 训练变电站变压器控制策略
+ Stable-Baselines3 
 
-支持多种算法：
 - PPO (Proximal Policy Optimization)
 - A2C (Advantage Actor-Critic)
-- DQN (Deep Q-Network) - 需要离散动作空间
-- SAC (Soft Actor-Critic) - 需要连续动作空间
+- DQN (Deep Q-Network) - 
+- SAC (Soft Actor-Critic) - 
 
-作者：重构版本
-日期：2025-10-31
+2025-10-31
 """
 
 import os
@@ -30,13 +28,12 @@ from stable_baselines3.common.callbacks import (
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.logger import configure
 
-# 自定义环境
+# 
 from src.envs.gym_substation_env import make_substation_env
-
 
 class TensorboardCallback(BaseCallback):
     """
-    自定义回调，用于记录额外的指标到 Tensorboard
+     Tensorboard
     """
 
     def __init__(self, verbose=0):
@@ -45,13 +42,13 @@ class TensorboardCallback(BaseCallback):
         self.episode_lengths = []
 
     def _on_step(self) -> bool:
-        # 获取环境信息
+        # 
         for info in self.locals.get('infos', []):
             if 'episode' in info:
                 self.episode_rewards.append(info['episode']['r'])
                 self.episode_lengths.append(info['episode']['l'])
 
-                # 记录统计信息
+                # 
                 if 'stats' in info:
                     stats = info['stats']
                     self.logger.record('stats/total_disconnections', stats['total_disconnections'])
@@ -59,7 +56,7 @@ class TensorboardCallback(BaseCallback):
                     self.logger.record('stats/false_disconnections', stats['false_disconnections'])
                     self.logger.record('stats/missed_disconnections', stats['missed_disconnections'])
 
-                    # 计算准确率
+                    # 
                     total_decisions = (stats['correct_disconnections'] +
                                        stats['false_disconnections'] +
                                        stats['missed_disconnections'])
@@ -67,17 +64,16 @@ class TensorboardCallback(BaseCallback):
                         accuracy = stats['correct_disconnections'] / total_decisions
                         self.logger.record('stats/disconnect_accuracy', accuracy)
 
-                    # FDI 检测率
+                    # FDI 
                     if stats['total_fdi_attacks'] > 0:
                         fdi_detection_rate = stats['fdi_attacks_detected'] / stats['total_fdi_attacks']
                         self.logger.record('stats/fdi_detection_rate', fdi_detection_rate)
 
         return True
 
-
 def make_env(env_kwargs, rank=0, seed=0):
     """
-    创建环境的工厂函数（用于并行环境）
+    
     """
     def _init():
         env = make_substation_env(**env_kwargs)
@@ -85,7 +81,6 @@ def make_env(env_kwargs, rank=0, seed=0):
         env = Monitor(env)
         return env
     return _init
-
 
 def train(
     algorithm='ppo',
@@ -106,28 +101,28 @@ def train(
     seed=42,
 ):
     """
-    训练函数
+    
 
     Args:
-        algorithm: 算法名称 ('ppo', 'a2c', 'dqn')
-        network_case: 电网案例
-        total_timesteps: 总训练步数
-        n_envs: 并行环境数量
-        learning_rate: 学习率
-        n_steps: PPO/A2C 的步数
-        batch_size: 批次大小
-        n_epochs: PPO 的 epoch 数
-        gamma: 折扣因子
-        max_steps_per_episode: 每个 episode 的最大步数
-        fdi_attack_prob: FDI 攻击概率
-        max_temperature: 最大安全温度
-        save_dir: 模型保存目录
-        log_dir: 日志目录
-        eval_freq: 评估频率
-        seed: 随机种子
+        algorithm:  ('ppo', 'a2c', 'dqn')
+        network_case: 
+        total_timesteps: 
+        n_envs: 
+        learning_rate: 
+        n_steps: PPO/A2C 
+        batch_size: 
+        n_epochs: PPO  epoch 
+        gamma: 
+        max_steps_per_episode:  episode 
+        fdi_attack_prob: FDI 
+        max_temperature: 
+        save_dir: 
+        log_dir: 
+        eval_freq: 
+        seed: 
     """
 
-    # 创建保存目录
+    # 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     save_path = os.path.join(save_dir, f"{algorithm}_{network_case}_{timestamp}")
     log_path = os.path.join(log_dir, f"{algorithm}_{network_case}_{timestamp}")
@@ -149,7 +144,7 @@ def train(
     print(f"Log Path: {log_path}")
     print(f"{'='*80}\n")
 
-    # 环境配置
+    # 
     env_kwargs = {
         'network_case': network_case,
         'max_steps': max_steps_per_episode,
@@ -157,35 +152,35 @@ def train(
         'max_temperature': max_temperature,
     }
 
-    # 创建训练环境
+    # 
     if n_envs > 1:
         env = SubprocVecEnv([make_env(env_kwargs, rank=i, seed=seed) for i in range(n_envs)])
     else:
         env = DummyVecEnv([make_env(env_kwargs, seed=seed)])
 
-    # 创建评估环境
+    # 
     eval_env = DummyVecEnv([make_env(env_kwargs, seed=seed + 1000)])
 
-    # 检查环境（仅对单个环境）
+    # 
     print("Checking environment...")
     test_env = make_substation_env(**env_kwargs)
     try:
         check_env(test_env, warn=True)
-        print("✓ Environment check passed!\n")
+        print(" Environment check passed!\n")
     except Exception as e:
-        print(f"✗ Environment check failed: {e}\n")
+        print(f" Environment check failed: {e}\n")
     finally:
         test_env.close()
 
-    # 配置日志
+    # 
     logger = configure(log_path, ["stdout", "tensorboard"])
 
-    # 创建回调
+    # 
     eval_callback = EvalCallback(
         eval_env,
         best_model_save_path=save_path,
         log_path=log_path,
-        eval_freq=eval_freq // n_envs,  # 除以环境数量
+        eval_freq=eval_freq // n_envs,  # 
         n_eval_episodes=5,
         deterministic=True,
         render=False,
@@ -196,7 +191,7 @@ def train(
 
     callbacks = CallbackList([eval_callback, tensorboard_callback])
 
-    # 创建模型
+    # 
     print(f"Creating {algorithm.upper()} model...")
 
     if algorithm.lower() == 'ppo':
@@ -241,24 +236,23 @@ def train(
 
     print(f"Starting training for {total_timesteps:,} timesteps...\n")
 
-    # 训练
+    # 
     model.learn(
         total_timesteps=total_timesteps,
         callback=callbacks,
         progress_bar=True
     )
 
-    # 保存最终模型
+    # 
     final_model_path = os.path.join(save_path, f"{algorithm}_final")
     model.save(final_model_path)
-    print(f"\n✓ Training completed! Final model saved to: {final_model_path}")
+    print(f"\n Training completed! Final model saved to: {final_model_path}")
 
-    # 清理
+    # 
     env.close()
     eval_env.close()
 
     return model, save_path
-
 
 def evaluate(
     model_path,
@@ -271,17 +265,17 @@ def evaluate(
     seed=999,
 ):
     """
-    评估训练好的模型
+    
 
     Args:
-        model_path: 模型路径（不含扩展名）
-        network_case: 电网案例
-        n_eval_episodes: 评估 episode 数量
-        max_steps_per_episode: 每个 episode 的最大步数
-        fdi_attack_prob: FDI 攻击概率
-        max_temperature: 最大安全温度
-        render: 是否渲染
-        seed: 随机种子
+        model_path: 
+        network_case: 
+        n_eval_episodes:  episode 
+        max_steps_per_episode:  episode 
+        fdi_attack_prob: FDI 
+        max_temperature: 
+        render: 
+        seed: 
     """
 
     print(f"\n{'='*80}")
@@ -292,7 +286,7 @@ def evaluate(
     print(f"Eval Episodes: {n_eval_episodes}")
     print(f"{'='*80}\n")
 
-    # 创建环境
+    # 
     env_kwargs = {
         'network_case': network_case,
         'max_steps': max_steps_per_episode,
@@ -303,8 +297,8 @@ def evaluate(
     env = make_substation_env(**env_kwargs)
     env.seed(seed)
 
-    # 加载模型
-    # 自动检测算法类型
+    # 
+    # 
     if 'ppo' in model_path.lower():
         model = PPO.load(model_path)
     elif 'a2c' in model_path.lower():
@@ -312,11 +306,11 @@ def evaluate(
     elif 'dqn' in model_path.lower():
         model = DQN.load(model_path)
     else:
-        # 默认尝试 PPO
+        #  PPO
         print("Warning: Cannot detect algorithm from path, trying PPO...")
         model = PPO.load(model_path)
 
-    # 评估
+    # 
     episode_rewards = []
     episode_lengths = []
     all_stats = []
@@ -344,14 +338,14 @@ def evaluate(
         print(f"Episode {episode + 1}/{n_eval_episodes}: "
               f"Reward = {episode_reward:.2f}, Length = {steps}")
 
-    # 统计结果
+    # 
     print(f"\n{'='*80}")
     print(f"Evaluation Results")
     print(f"{'='*80}")
     print(f"Average Reward: {np.mean(episode_rewards):.2f} ± {np.std(episode_rewards):.2f}")
     print(f"Average Length: {np.mean(episode_lengths):.2f} ± {np.std(episode_lengths):.2f}")
 
-    # 聚合统计信息
+    # 
     aggregated_stats = {key: [] for key in all_stats[0].keys()}
     for stats in all_stats:
         for key, value in stats.items():
@@ -361,7 +355,7 @@ def evaluate(
     for key, values in aggregated_stats.items():
         print(f"  {key}: {np.mean(values):.2f} ± {np.std(values):.2f}")
 
-    # 计算准确率
+    # 
     total_correct = sum(s['correct_disconnections'] for s in all_stats)
     total_false = sum(s['false_disconnections'] for s in all_stats)
     total_missed = sum(s['missed_disconnections'] for s in all_stats)
@@ -371,7 +365,7 @@ def evaluate(
         accuracy = total_correct / total_decisions
         print(f"\nDisconnect Decision Accuracy: {accuracy:.2%}")
 
-    # FDI 检测率
+    # FDI 
     total_fdi_attacks = sum(s['total_fdi_attacks'] for s in all_stats)
     total_fdi_detected = sum(s['fdi_attacks_detected'] for s in all_stats)
 
@@ -388,7 +382,6 @@ def evaluate(
         'lengths': episode_lengths,
         'stats': aggregated_stats,
     }
-
 
 def main():
     parser = argparse.ArgumentParser(description='Train/Evaluate Substation Transformer Control with SB3')
@@ -448,7 +441,6 @@ def main():
             render=args.render,
             seed=args.seed,
         )
-
 
 if __name__ == '__main__':
     main()

@@ -51,7 +51,6 @@ metrics_log = {
     "accuracy": []
 }
 
-
 def record_and_plot_metrics(episode, TP, FP, FN, TN, save_path="metrics_over_episodes.png"):
     precision = TP / (TP + FP) if TP + FP > 0 else 0
     recall = TP / (TP + FN) if TP + FN > 0 else 0
@@ -68,7 +67,7 @@ def record_and_plot_metrics(episode, TP, FP, FN, TN, save_path="metrics_over_epi
     metrics_log["f1"].append(f1)
     metrics_log["accuracy"].append(accuracy)
 
-    # 绘图
+    # 
     plt.figure(figsize=(10, 6))
     plt.plot(metrics_log["episode"], metrics_log["precision"], label='Precision', marker='o')
     plt.plot(metrics_log["episode"], metrics_log["recall"], label='Recall', marker='s')
@@ -90,14 +89,14 @@ def add_support_sgen_to_transformers(net, time_steps=200, base_p_mw=80.0, fluctu
     for i, row in net.trafo.iterrows():
         hv_bus = row["hv_bus"]
 
-        # 创建一个 sgen，初始有功功率为 base_p_mw
+        #  sgen base_p_mw
         sgen_idx = pp.create_sgen(net, bus=hv_bus, p_mw=base_p_mw, q_mvar=0.0, name=f"sgen_trafo_{i}")
-        print(f"⚡ Created sgen {sgen_idx} at hv_bus {hv_bus} for Trafo {i}")
+        print(f" Created sgen {sgen_idx} at hv_bus {hv_bus} for Trafo {i}")
 
-        # 创建时间变化的 profile：base ± fluctuation * sin
+        #  profilebase ± fluctuation * sin
         time = np.arange(time_steps)
         profile = base_p_mw + fluctuation * np.sin(2 * np.pi * time / time_steps)
-        profile = np.clip(profile, 0, None)  # 保证不为负
+        profile = np.clip(profile, 0, None)  # 
 
         profile_df = pd.DataFrame({"p_mw": profile})
         ds = DFData(profile_df)
@@ -106,7 +105,7 @@ def add_support_sgen_to_transformers(net, time_steps=200, base_p_mw=80.0, fluctu
                      element_index=[sgen_idx],
                      data_source=ds,
                      profile_name="p_mw")
-        print(f"✅ Attached time-varying control to sgen {sgen_idx}")
+        print(f" Attached time-varying control to sgen {sgen_idx}")
 
 def inject_transformer_overload_safely(net, time_steps, events_per_trafo=3,
                                        base_load=10.0,
@@ -119,7 +118,7 @@ def inject_transformer_overload_safely(net, time_steps, events_per_trafo=3,
         if matched_loads.empty:
             new_idx = pp.create_load(net, bus=lv_bus, p_mw=base_load, q_mvar=0.0, name=f"synthetic_trafo_{trafo_idx}")
             load_indices = [new_idx]
-            print(f"➕ Created synthetic load {new_idx} at lv_bus {lv_bus} for Trafo {trafo_idx}")
+            print(f" Created synthetic load {new_idx} at lv_bus {lv_bus} for Trafo {trafo_idx}")
         else:
             load_indices = matched_loads.index.tolist()
 
@@ -130,7 +129,7 @@ def inject_transformer_overload_safely(net, time_steps, events_per_trafo=3,
             start = random.randint(0, time_steps - dur)
             factor = random.uniform(min_factor, max_factor)
             profile[start:start+dur] *= factor
-            print(f"🔥 Trafo {trafo_idx} overload: t={start}-{start+dur}, factor={factor:.2f}")
+            print(f" Trafo {trafo_idx} overload: t={start}-{start+dur}, factor={factor:.2f}")
 
         profile_df = pd.DataFrame({"p_mw": profile})
 
@@ -142,7 +141,7 @@ def inject_transformer_overload_safely(net, time_steps, events_per_trafo=3,
                 data_source=ds,
                 profile_name="p_mw"
             )
-            print(f"✅ Injected profile to Load {load_idx} for Trafo {trafo_idx}")
+            print(f" Injected profile to Load {load_idx} for Trafo {trafo_idx}")
 
 def build_net(time_steps=100, max_temperature=max_temperature):
     # This method is for initialization of the net with every controller.
@@ -152,7 +151,6 @@ def build_net(time_steps=100, max_temperature=max_temperature):
     add_support_sgen_to_transformers(net, time_steps=200, base_p_mw=30.0, fluctuation=10.0)
 
     inject_transformer_overload_safely(net, time_steps=time_steps)
-
 
     gen_profile = create_stable_gen_profile(net, time_steps=time_steps, base_gen_factor=1.8)
     ConstControl(net, element='gen', variable='p_mw', element_index=[0], data_source=gen_profile, profile_name='p_mw', order = 0)
@@ -221,10 +219,10 @@ for episode in range(total_episodes):
 
         run_timeseries(env.net, range(time_steps))
     except Exception as e:
-        print(f"⚠️ Episode {episode + 1} failed due to error: {e}")
+        print(f" Episode {episode + 1} failed due to error: {e}")
         continue
     finally:
-        print(f"✅ Finished Episode {episode + 1}/{total_episodes}")
+        print(f" Finished Episode {episode + 1}/{total_episodes}")
         print(f"\n[Total Confusion Matrix Stats]")
         print(f"TP: {RLController.tp}")
         print(f"FN: {RLController.fn}")

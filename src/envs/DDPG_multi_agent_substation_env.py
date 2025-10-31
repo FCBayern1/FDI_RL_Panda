@@ -28,7 +28,7 @@ class ddpg_multi_agent_substation_env:
         self.p = {idx: initial_p for idx in trafo_indices}
 
     def get_state_size(self):
-        return 12  # 添加 actual_temperature 和 fdi_delta 两个特征
+        return 12  #  actual_temperature  fdi_delta 
 
     def get_local_state(self, trafo_index):
         try:
@@ -98,26 +98,26 @@ class ddpg_multi_agent_substation_env:
 
         reward = 0.0
 
-        # ✅ 正确断开
+        #  
         if overheat and disconnect:
             reward += 6.0
-        # ❌ 漏断
+        #  
         elif overheat and not disconnect:
             reward -= 6.0
-        # ❌ 误断
+        #  
         elif not overheat and disconnect:
             reward -= 5.0
             if suspected_fdi:
-                reward += 1.5  # 若被误导，略减惩罚
-        # ✅ 保持运行
+                reward += 1.5  # 
+        #  
         elif not overheat and not disconnect:
             reward += 2.0
 
-        # 📉 电压低惩罚
+        #  
         if vm_pu < 0.95:
             reward -= (0.95 - vm_pu) * 2.0
 
-        # ⚡ 线路过载惩罚
+        #  
         if not disconnect and line_max > self.line_loading_limit:
             reward -= 2.0
 
